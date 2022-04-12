@@ -45,7 +45,7 @@ class Encoder(nn.Module):
         for i in range(1, len(channels)):
             self.encoder.append(Conv2D_Block(self.channels[i-1], self.channels[i]))
             self.encoder.append(Resnet_Block(self.channels[i]))
-            self.output_dimension = int(self.output_dimension / 2)
+            self.output_dimension = self.output_dimension // 2
             
         self.latent = nn.Linear(self.channels[-1] * self.output_dimension * self.output_dimension, self.latent_dimension)
     
@@ -69,7 +69,7 @@ class Decoder(nn.Module):
         for i in range(1, len(channels)):
             self.decoder.append(Resnet_Block(self.channels[i-1]))
             self.decoder.append(ConvTrans2D_Block(self.channels[i-1], self.channels[i]))
-            self.output_dimension = int(self.output_dimension * 2)
+            self.output_dimension = self.output_dimension * 2
             
         self.latent = nn.Linear(self.latent_dimension, self.channels[0] * self.input_dimension * self.input_dimension)
     
@@ -82,8 +82,8 @@ class Decoder(nn.Module):
 
 def ReflectionPad2d(source_dimension, target_dimension):
     dif = target_dimension - source_dimension
-    padding_left = padding_right = padding_top = padding_bottom = int(dif / 2)
-    if dif%2: padding_right = padding_bottom = int(dif / 2) + 1
+    padding_left = padding_right = padding_top = padding_bottom = dif // 2
+    if dif%2: padding_right = padding_bottom = (dif // 2) + 1
     return nn.ReflectionPad2d((padding_left, padding_right, padding_top, padding_bottom))
     
 class ComponentEmbedding(nn.Module):
@@ -196,13 +196,13 @@ class Discriminator(nn.Module):
         self.pool = nn.ModuleList()
         for i in range(avgpool):
             self.pool.append(nn.AvgPool2d(kernel_size=4, stride=2, padding=1))
-            self.output_dimension = int(self.output_dimension / 2)
+            self.output_dimension = self.output_dimension // 2
         
         self.dis_channels = [self.spatial_channel + 3, 64, 128, 256, 512]
         self.dis = nn.ModuleList()
         for i in range(1, len(self.dis_channels)):
             self.dis.append(Conv2D_Block(self.dis_channels[i-1], self.dis_channels[i]))
-            self.output_dimension = int(self.output_dimension / 2)
+            self.output_dimension = self.output_dimension // 2
     
     def forward(self, x):
         for i in range(len(self.pool)):
