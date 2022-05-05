@@ -1,5 +1,5 @@
 *.ipynb_checkpoints*
-Dataset/CelebAMask-HQ*
-Dataset/train*
-Dataset/test*
+Dataset/*
+!Dataset/dataset.ipynb
+!Dataset/simplify.sh
 Outsource*
