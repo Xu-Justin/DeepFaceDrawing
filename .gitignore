@@ -1,4 +1,7 @@
 *.ipynb_checkpoints*
+*__pycache__*
+*.pth
+temp*
 Dataset/*
 !Dataset/dataset.ipynb
 !Dataset/simplify.sh
