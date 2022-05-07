@@ -1,6 +1,9 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torchvision import transforms
+
+import os
 
 def Conv2D_Block(in_channels, out_channels):
     return nn.Sequential(
@@ -87,6 +90,7 @@ def ReflectionPad2d(source_dimension, target_dimension):
     return nn.ReflectionPad2d((padding_left, padding_right, padding_top, padding_bottom))
     
 class ComponentEmbedding(nn.Module):
+    
     def __init__(self, dimension):
         super().__init__()
         
@@ -110,16 +114,98 @@ class ComponentEmbedding(nn.Module):
         return x
     
     def Encode(self, sketch):
-        assert(sketch.shape[1:] == (1, self.dimension, self.dimension))
+        assert sketch.shape[1:] == (1, self.dimension, self.dimension), f'{sketch.shape[1:]} != {(1, self.dimension, self.dimension)}'
         latent = self.encoder(sketch)
         return latent
     
     def Decode(self, latent):
-        assert(latent.shape[1:] == (self.latent_dimension,))
+        assert latent.shape[1:] == (self.latent_dimension,), f'{latent.shape[1:]} != {(self.latent_dimension,)}'
         sketch = self.decoder(latent)
         sketch = self.output(sketch)
         return sketch
+    
+    path_encoder = 'encoder.pth'
+    path_decoder = 'decoder.pth'
+    path_output = 'output.pth'
+    
+    def get_encoder_path(self, path):
+        return os.path.join(path, self.path_encoder)
+    
+    def get_decoder_path(self, path):
+        return os.path.join(path, self.path_decoder)
+    
+    def get_output_path(self, path):
+        return os.path.join(path, self.path_output)
+    
+    def save(self, path):
+        os.makedirs(path, exist_ok=True)
+        torch.save(self.encoder.state_dict(), self.get_encoder_path(path))
+        torch.save(self.decoder.state_dict(), self.get_decoder_path(path))
+        torch.save(self.output.state_dict(), self.get_output_path(path))
+        print(f'Saved Component Embedding to {path}')
+        
+    def load(self, path):    
+        self.encoder.load_state_dict(torch.load(self.get_encoder_path(path)))
+        self.decoder.load_state_dict(torch.load(self.get_decoder_path(path)))
+        self.output.load_state_dict(torch.load(self.get_output_path(path)))
+        print(f'Loaded Component Embedding from {path}')
 
+class ComponentEmbedding_Master(ComponentEmbedding):
+    
+    master_dimension = 512
+    
+    def __init__(self, part, prefix):
+        self.part = part
+        self.prefix = prefix
+        self.crop_dimension = (part[0], part[1], part[0] + part[2], part[1] + part[2]) # xmin, ymin, xmax, ymax
+        super().__init__(part[2])
+    
+    def crop(self, sketch):
+        assert sketch.shape[1:] == (1, self.master_dimension, self.master_dimension), f'{sketch.shape[1:]} != {(1, self.master_dimension, self.master_dimension)}'
+        return sketch[:, :, self.crop_dimension[1]:self.crop_dimension[3], self.crop_dimension[0]:self.crop_dimension[2]].clone()
+    
+    def save(self, path):
+        super().save(os.path.join(path, self.prefix))
+    
+    def load(self, path):
+        super().save(os.path.join(path, self.prefix))
+    
+    transform = transforms.Compose([
+        transforms.Grayscale(),
+        transforms.Resize(master_dimension),
+        transforms.ToTensor()
+    ])
+    
+class ComponentEmbedding_LeftEye(ComponentEmbedding_Master):
+    def __init__(self):
+        part = (108, 126, 128)
+        prefix = 'left_eye'
+        super().__init__(part, prefix)
+    
+class ComponentEmbedding_RightEye(ComponentEmbedding_Master):
+    def __init__(self):
+        part = (255, 126, 128)
+        prefix = 'right_eye'
+        super().__init__(part, prefix)
+
+class ComponentEmbedding_Nose(ComponentEmbedding_Master):
+    def __init__(self):
+        part = (182, 232, 160)
+        prefix = 'nose'
+        super().__init__(part, prefix)
+    
+class ComponentEmbedding_Mouth(ComponentEmbedding_Master):
+    def __init__(self):
+        part = (169, 301, 192)
+        prefix = 'mouth'
+        super().__init__(part, prefix)
+        
+class ComponentEmbedding_Background(ComponentEmbedding_Master):
+    def __init__(self):
+        part = (0, 0, 512)
+        prefix = 'background'
+        super().__init__(part, prefix)
+        
 class FeatureMapping(nn.Module):
     def __init__(self, dimension):
         super().__init__()
@@ -146,7 +232,7 @@ class FeatureMapping(nn.Module):
         return x
     
     def Decode(self, latent):
-        assert(latent.shape[1:] == (self.latent_dimension,))
+        assert latent.shape[1:] == (self.latent_dimension,)
         sketch = self.decoder(latent)
         sketch = self.output(sketch)
         return sketch
@@ -230,14 +316,14 @@ class ImageSynthesis(nn.Module):
         return self.Generate(x)
     
     def Generate(self, spatial_map):
-        assert(spatial_map.shape[1:] == (self.spatial_channel, self.dimension, self.dimension))
+        assert spatial_map.shape[1:] == (self.spatial_channel, self.dimension, self.dimension)
         photo = self.G(spatial_map)
         return photo
     
     def Discriminate(self, spatial_map, photo):
-        assert(spatial_map.shape[0] == photo.shape[0])
-        assert(spatial_map.shape[1:] == (self.spatial_channel, self.dimension, self.dimension))
-        assert(photo.shape[1:] == (3, self.dimension, self.dimension))
+        assert spatial_map.shape[0] == photo.shape[0]
+        assert spatial_map.shape[1:] == (self.spatial_channel, self.dimension, self.dimension)
+        assert photo.shape[1:] == (3, self.dimension, self.dimension)
         
         spatial_map_photo = torch.cat((spatial_map, photo), 1)
         patch_D1 = self.D1(spatial_map_photo)
