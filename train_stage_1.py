@@ -13,6 +13,7 @@ def get_args_parser():
     import argparse
     parser = argparse.ArgumentParser(description='Deep Face Drawing: Train Stage 1')
     parser.add_argument('--dataset', type=str, required=True, help='Path to training dataset.')
+    parser.add_argument('--dataset_validation', type=str, default=None, help='Path to validation dataset.')
     parser.add_argument('--batch_size', type=int, default=1)
     parser.add_argument('--epochs', type=int, required=True)
     parser.add_argument('--resume', type=str, default=None, help='Path to load model weights.')
@@ -62,8 +63,12 @@ def main(args):
         transforms.ToTensor()
     ])
     augmentation_transform = None
-    dataset = Stage1Dataset(args.dataset, transform, augmentation_transform)
-    dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True, num_workers=10)
+    train_dataset = Stage1Dataset(args.dataset, transform, augmentation_transform)
+    train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=10)
+    
+    if args.dataset_validation:
+        validation_dataset = Stage1Dataset(args.dataset_validation, transform)
+        validation_dataloader = DataLoader(validation_dataset, batch_size=args.batch_size, shuffle=True, num_workers=10)
     
     optimizer = torch.optim.Adam(model.parameters(), lr=0.0002, betas=(0.5, 0.999))
     criterion = torch.nn.MSELoss()
@@ -79,20 +84,39 @@ def main(args):
         }
         
         model.train()
-        
-        for sketches in tqdm(dataloader, desc=f'Epoch - {epoch+1} / {args.epochs}'):
+        for sketches in tqdm(train_dataloader, desc=f'Epoch - {epoch+1} / {args.epochs}'):
             optimizer.zero_grad()
             for key in model.keys:
                 X = model.CE[key].crop(sketches).to(device)
                 y = model.CE[key](X)
                 loss = criterion(y, X)
                 loss.backward()
-                running_loss[key] += loss.item() * len(sketches) / len(dataloader.dataset)
+                running_loss[key] += loss.item() * len(sketches) / len(train_dataloader.dataset)
             optimizer.step()
+        
+        if args.dataset_validation:
+            validation_running_loss = {
+                'left_eye' : 0,
+                'right_eye' : 0,
+                'nose' : 0,
+                'mouth' : 0,
+                'background' : 0
+            }
             
+            model.eval()
+            with torch.no_grad():
+                for sketches in tqdm(validation_dataloader, desc=f'Epoch - {epoch+1} / {args.epochs}'):
+                    for key in model.keys:
+                        X = model.CE[key].crop(sketches).to(device)
+                        y = model.CE[key](X)
+                        loss = criterion(y, X)
+                        validation_running_loss[key] += loss.item() * len(sketches) / len(validation_dataloader.dataset)
+        
         print()    
         print(f'Epoch - {epoch+1} / {args.epochs}')
         for key, loss in running_loss.items():
+            print(f'Loss {key:10} : {loss:.6f}')
+        for key, loss in validation_running_loss.items():
             print(f'Loss {key:10} : {loss:.6f}')
         print()
         
