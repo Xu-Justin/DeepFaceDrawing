@@ -197,17 +197,6 @@ class ComponentEmbedding_Master(ComponentEmbedding):
     def load(self, path):
         super().save(os.path.join(path, self.prefix))
     
-    def get_transform(self):
-        return transforms.Compose([
-            transforms.Grayscale(),
-            transforms.Resize(self.master_dimension),
-            transforms.ToTensor()
-        ])
-        
-    def transform(self, x):
-        t = self.get_transform()
-        return t(x)
-    
 class ComponentEmbedding_LeftEye(ComponentEmbedding_Master):
     def __init__(self, encoder=True, decoder=True):
         self.part = (108, 126, 128)
@@ -485,6 +474,8 @@ class DeepFaceDrawing(nn.Module):
         self.FM = None
         self.IS = None
         self.MN = None
+        
+        self.keys = ['left_eye', 'right_eye', 'nose', 'mouth', 'background']
             
         if CE:
             self.CE = nn.ModuleDict({
