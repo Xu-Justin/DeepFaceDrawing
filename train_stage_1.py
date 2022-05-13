@@ -116,8 +116,9 @@ def main(args):
         print(f'Epoch - {epoch+1} / {args.epochs}')
         for key, loss in running_loss.items():
             print(f'Loss {key:10} : {loss:.6f}')
-        for key, loss in validation_running_loss.items():
-            print(f'Loss {key:10} : {loss:.6f}')
+        if args.dataset_validation:
+            for key, loss in validation_running_loss.items():
+                print(f'Loss {key:10} : {loss:.6f}')
         print()
         
         model.save(args.output)
