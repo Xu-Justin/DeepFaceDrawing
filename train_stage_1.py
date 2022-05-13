@@ -17,6 +17,7 @@ def get_args_parser():
     parser.add_argument('--epochs', type=int, required=True)
     parser.add_argument('--resume', type=str, default=None, help='Path to load model weights.')
     parser.add_argument('--output', type=str, required=True, help='Path to save weights.')
+    parser.add_argument('--device', type=str, default='cuda')
     args = parser.parse_args()
     return args
 
@@ -43,7 +44,7 @@ class Stage1Dataset(Dataset):
         return sketch
         
 def main(args):
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    device = torch.device(args.device)
     print(f'Device : {device}')
     
     model = DeepFaceDrawing(
