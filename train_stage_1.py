@@ -4,7 +4,6 @@ from PIL import Image
 
 import torch
 from torch.utils.data import Dataset, DataLoader
-from torchvision.io import read_image
 from torchvision import transforms
 
 from model import DeepFaceDrawing
