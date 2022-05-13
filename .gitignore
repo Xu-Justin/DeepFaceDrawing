@@ -6,4 +6,3 @@ Dataset/*
 !Dataset/dataset.ipynb
 !Dataset/simplify.sh
 !Dataset/download_from_kaggle.sh
-Outsource*rm
