@@ -164,18 +164,40 @@ class ComponentEmbedding(nn.Module):
     def get_path(self, path, key):
         return os.path.join(path, self.path_dict[key])
     
+    def save_encoder(self, path):
+        torch.save(self.encoder.state_dict(), path)
+        print(f'Saved Component Embedding : encoder to {path}')
+    
+    def save_decoder(self, path):
+        torch.save(self.decoder.state_dict(), path)
+        print(f'Saved Component Embedding : decoder to {path}')
+    
+    def save_output(self, path):
+        torch.save(self.output.state_dict(), path)
+        print(f'Saved Component Embedding : output to {path}')
+    
     def save(self, path):
         os.makedirs(path, exist_ok=True)
-        if self.encoder: torch.save(self.encoder.state_dict(), self.get_path(path, 'encoder'))
-        if self.decoder: torch.save(self.decoder.state_dict(), self.get_path(path, 'decoder'))
-        if self.output: torch.save(self.output.state_dict(), self.get_path(path, 'output'))
-        print(f'Saved Component Embedding to {path}')
-        
-    def load(self, path):    
-        if self.encoder: self.encoder.load_state_dict(torch.load(self.get_path(path, 'encoder')))
-        if self.decoder: self.decoder.load_state_dict(torch.load(self.get_path(path, 'decoder')))
-        if self.output: self.output.load_state_dict(torch.load(self.get_path(path, 'output')))
-        print(f'Loaded Component Embedding from {path}')
+        if self.encoder: self.save_encoder(self.get_path(path, 'encoder'))
+        if self.decoder: self.save_decoder(self.get_path(path, 'decoder'))
+        if self.output: self.save_output(self.get_path(path, 'output'))
+    
+    def load_encoder(self, path):
+        self.encoder.load_state_dict(torch.load(path))
+        print(f'Loaded Component Embedding : encoder from {path}')
+    
+    def load_decoder(self, path):
+        self.decoder.load_state_dict(torch.load(path))
+        print(f'Loaded Component Embedding : decoder from {path}')
+    
+    def load_output(self, path):
+        self.output.load_state_dict(torch.load(path))
+        print(f'Loaded Component Embedding : output from {path}')
+    
+    def load(self, path):
+        if self.encoder: self.load_encoder(self.get_path(path, 'encoder'))
+        if self.decoder: self.load_decoder(self.get_path(path, 'decoder'))
+        if self.output: self.load_output(self.get_path(path, 'output'))
 
 class ComponentEmbedding_Master(ComponentEmbedding):
     
@@ -194,7 +216,7 @@ class ComponentEmbedding_Master(ComponentEmbedding):
         super().save(os.path.join(path, self.prefix))
     
     def load(self, path):
-        super().save(os.path.join(path, self.prefix))
+        super().load(os.path.join(path, self.prefix))
     
 class ComponentEmbedding_LeftEye(ComponentEmbedding_Master):
     def __init__(self, encoder=True, decoder=True):
@@ -288,16 +310,30 @@ class FeatureMapping(nn.Module):
     def get_path(self, path, key):
         return os.path.join(path, self.path_dict[key])
     
+    def save_decoder(self, path):
+        torch.save(self.decoder.state_dict(), path)
+        print(f'Saved Feature Mapping : decoder to {path}')
+    
+    def save_output(self, path):
+        torch.save(self.output.state_dict(), path)
+        print(f'Saved Feature Mapping : output to {path}')
+    
     def save(self, path):
         os.makedirs(path, exist_ok=True)
-        if self.decoder: torch.save(self.decoder.state_dict(), self.get_path(path, 'decoder'))
-        if self.output: torch.save(self.output.state_dict(), self.get_path(path, 'output'))
-        print(f'Saved Feature Mapping to {path}')
-        
-    def load(self, path):    
-        if self.decoder: self.decoder.load_state_dict(torch.load(self.get_path(path, 'decoder')))
-        if self.output: self.output.load_state_dict(torch.load(self.get_path(path, 'output')))
-        print(f'Loaded Feature Mapping from {path}')
+        if self.decoder: self.save_decoder(self.get_path(path, 'decoder'))
+        if self.output: self.save_output(self.get_path(path, 'output'))
+ 
+    def load_decoder(self, path):
+        self.decoder.load_state_dict(torch.load(path))
+        print(f'Loaded Feature Mapping : decoder from {path}')
+    
+    def load_output(self, path):
+        self.output.load_state_dict(torch.load(path))
+        print(f'Loaded Feature Mapping : output from {path}')
+    
+    def load(self, path):
+        if self.decoder: self.load_decoder(self.get_path(path, 'decoder'))
+        if self.output: self.load_output(self.get_path(path, 'output'))
 
 class FeatureMapping_Master(FeatureMapping):
     def __init__(self, CE, decoder=True):
@@ -318,7 +354,7 @@ class FeatureMapping_Master(FeatureMapping):
         super().save(os.path.join(path, self.prefix))
     
     def load(self, path):
-        super().save(os.path.join(path, self.prefix))
+        super().load(os.path.join(path, self.prefix))
 
 class FeatureMapping_LeftEye(FeatureMapping_Master):
     def __init__(self, decoder=True):
@@ -398,6 +434,7 @@ class Discriminator(nn.Module):
             x = self.pool[i](x)
         for i in range(len(self.dis)):
             x = self.dis[i](x)
+        x = torch.sigmoid(x)
         return x
 
 class ImageSynthesis(nn.Module):
@@ -419,6 +456,8 @@ class ImageSynthesis(nn.Module):
             self.D1 = Discriminator(self.dimension, self.spatial_channel, avgpool=0)
             self.D2 = Discriminator(self.dimension, self.spatial_channel, avgpool=1)
             self.D3 = Discriminator(self.dimension, self.spatial_channel, avgpool=2)
+            self.label_real = 1
+            self.label_fake = 0
             
     def forward(self, x):
         return self.Generate(x)
@@ -450,21 +489,51 @@ class ImageSynthesis(nn.Module):
     def get_path(self, path, key):
         return os.path.join(path, self.path_dict[key])
     
+    def save_G(self, path):
+        torch.save(self.G.state_dict(), path)
+        print(f'Saved Image Synthesis : G to {path}')
+    
+    def save_D1(self, path):
+        torch.save(self.D1.state_dict(), path)
+        print(f'Saved Image Synthesis : D1 to {path}')
+    
+    def save_D2(self, path):
+        torch.save(self.D2.state_dict(), path)
+        print(f'Saved Image Synthesis : D2 to {path}')
+    
+    def save_D3(self, path):
+        torch.save(self.D3.state_dict(), path)
+        print(f'Saved Image Synthesis : D3 to {path}')
+    
     def save(self, path):
         os.makedirs(path, exist_ok=True)
-        if self.G: torch.save(self.G.state_dict(), self.get_path(path, 'G'))
-        if self.D1: torch.save(self.D1.state_dict(), self.get_path(path, 'D1'))
-        if self.D2: torch.save(self.D2.state_dict(), self.get_path(path, 'D2'))
-        if self.D3: torch.save(self.D3.state_dict(), self.get_path(path, 'D3'))
-        print(f'Saved Image Synthesis to {path}')
+        if self.G: self.save_G(self.get_path(path, 'G'))
+        if self.D1: self.save_D1(self.get_path(path, 'D1'))
+        if self.D2: self.save_D2(self.get_path(path, 'D2'))
+        if self.D3: self.save_D3(self.get_path(path, 'D3'))
         
-    def load(self, path):    
-        if self.G: self.G.load_state_dict(torch.load(self.get_path(path, 'G')))
-        if self.D1: self.D1.load_state_dict(torch.load(self.get_path(path, 'D1')))
-        if self.D2: self.D2.load_state_dict(torch.load(self.get_path(path, 'D2')))
-        if self.D3: self.D3.load_state_dict(torch.load(self.get_path(path, 'D3')))
-        print(f'Loaded Image Synthesis from {path}')   
-
+    def load_G(self, path):
+        self.G.load_state_dict(torch.load(path))
+        print(f'Loaded Image Synthesis : G from {path}')
+    
+    def load_D1(self, path):
+        self.D1.load_state_dict(torch.load(path))
+        print(f'Loaded Image Synthesis : D1 from {path}')
+    
+    def load_D2(self, path):
+        self.D2.load_state_dict(torch.load(path))
+        print(f'Loaded Image Synthesis : D2 from {path}')
+    
+    def load_D3(self, path):
+        self.D3.load_state_dict(torch.load(path))
+        print(f'Loaded Image Synthesis : D3 from {path}')
+    
+    def load(self, path):
+        if self.G: self.load_G(self.get_path(path, 'G'))
+        if self.D1: self.load_D1(self.get_path(path, 'D1'))
+        if self.D2: self.load_D2(self.get_path(path, 'D2'))
+        if self.D3: self.load_D3(self.get_path(path, 'D3'))
+        
 class DeepFaceDrawing(nn.Module):
     
     def __init__(self, CE=True, FM=True, IS=True, manifold=False, CE_encoder=True, CE_decoder=False, FM_decoder=True, IS_generator=True, IS_discriminator=False):
@@ -542,7 +611,7 @@ class DeepFaceDrawing(nn.Module):
             'left_eye' : patch_LeftEye,
             'right_eye' : patch_RightEye,
             'nose' : patch_Nose,
-            'mouth' : patch_Nose,
+            'mouth' : patch_Mouth,
             'background' : patch_Background
         }
         
@@ -579,29 +648,45 @@ class DeepFaceDrawing(nn.Module):
     def get_path(self, path, key):
         return os.path.join(path, self.path_dict[key])
     
-    def save(self, path):
-        if self.CE:
-            for key, CEs in self.CE.items():
-                CEs.save(os.path.join(path, self.path_dict['CE']))
-        if self.FM:
-            for key, FMs in self.FM.items():
-                FMs.save(os.path.join(path, self.path_dict['FM']))
-        if self.IS:
-            self.IS.save(os.path.join(path, self.path_dict['IS']))
-        if self.MN:
-            raise NotImplementedError
+    def save_CE(self, path):
+        for key, CEs in self.CE.items():
+            CEs.save(path)
+    
+    def save_FM(self, path):
+        for key, FMs in self.FM.items():
+            FMs.save(path)
+    
+    def save_IS(self, path):
+        self.IS.save(path)
         
+    def save_MN(self, path):
+        raise NotImplementedError
+    
+    def save(self, path):
+        if self.CE: self.save_CE(self.get_path(path, 'CE'))
+        if self.FM: self.save_FM(self.get_path(path, 'FM'))
+        if self.IS: self.save_IS(self.get_path(path, 'IS'))
+        if self.MN: raise NotImplementedError
+    
+    def load_CE(self, path):
+        for key, CEs in self.CE.items():
+            CEs.load(path)
+    
+    def load_FM(self, path):
+        for key, FMs in self.FM.items():
+            FMs.load(path)
+    
+    def load_IS(self, path):
+        self.IS.load(path)
+        
+    def load_MN(self, path):
+        raise NotImplementedError
+    
     def load(self, path):
-        if self.CE:
-            for key, CEs in self.CE.items():
-                CEs.load(os.path.join(path, self.path_dict['CE']))
-        if self.FM:
-            for key, FMs in self.FM.items():
-                FMs.load(os.path.join(path, self.path_dict['FM']))
-        if self.IS:
-            self.IS.load(os.path.join(path, self.path_dict['IS']))
-        if self.MN:
-            raise NotImplementedError
+        if self.CE: self.load_CE(self.get_path(path, 'CE'))
+        if self.FM: self.load_FM(self.get_path(path, 'FM'))
+        if self.IS: self.load_IS(self.get_path(path, 'IS'))
+        if self.MN: raise NotImplementedError
         
 def main():
     model = DeepFaceDrawing(
@@ -610,11 +695,6 @@ def main():
         IS=True, IS_generator=True, IS_discriminator=True,
         manifold=False
     )
-    
-    sketches = torch.rand(2, 1, 512, 512)
-    photos = model(sketches)
-    
-    assert photos.shape == (2, 3, 512, 512), photos.shape
     
 if __name__ == '__main__':
     main()

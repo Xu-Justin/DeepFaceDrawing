@@ -16,7 +16,7 @@ def get_args_parser():
     parser.add_argument('--batch_size', type=int, default=1)
     parser.add_argument('--epochs', type=int, required=True)
     parser.add_argument('--resume', type=str, default=None, help='Path to load model weights.')
-    parser.add_argument('--output', type=str, required=True, help='Path to save weights.')
+    parser.add_argument('--output', type=str, default=None, help='Path to save weights.')
     parser.add_argument('--device', type=str, default='cuda')
     args = parser.parse_args()
     return args
@@ -76,52 +76,54 @@ def main(args):
     for epoch in range(args.epochs):
         
         running_loss = {
-            'left_eye' : 0,
-            'right_eye' : 0,
-            'nose' : 0,
-            'mouth' : 0,
-            'background' : 0
+            'loss_left_eye' : 0,
+            'loss_right_eye' : 0,
+            'loss_nose' : 0,
+            'loss_mouth' : 0,
+            'loss_background' : 0
         }
         
         model.train()
         for sketches in tqdm(train_dataloader, desc=f'Epoch - {epoch+1} / {args.epochs}'):
             optimizer.zero_grad()
-            for key in model.keys:
-                X = model.CE[key].crop(sketches).to(device)
-                y = model.CE[key](X)
+            for key, CEs in model.CE.items():
+                X = CEs.crop(sketches).to(device)
+                y = CEs(X)
                 loss = criterion(y, X)
                 loss.backward()
-                running_loss[key] += loss.item() * len(sketches) / len(train_dataloader.dataset)
+                running_loss[f'loss_{key}'] += loss.item() * len(sketches) / len(train_dataloader.dataset)
             optimizer.step()
         
         if args.dataset_validation:
             validation_running_loss = {
-                'left_eye' : 0,
-                'right_eye' : 0,
-                'nose' : 0,
-                'mouth' : 0,
-                'background' : 0
+                'val_loss_left_eye' : 0,
+                'val_loss_right_eye' : 0,
+                'val_loss_nose' : 0,
+                'val_loss_mouth' : 0,
+                'val_loss_background' : 0
             }
             
             model.eval()
             with torch.no_grad():
-                for sketches in tqdm(validation_dataloader, desc=f'Epoch - {epoch+1} / {args.epochs}'):
-                    for key in model.keys:
-                        X = model.CE[key].crop(sketches).to(device)
-                        y = model.CE[key](X)
+                for sketches in tqdm(validation_dataloader, desc=f'Validation Epoch - {epoch+1} / {args.epochs}'):
+                    for key, CEs in model.CE.items():
+                        X = CEs.crop(sketches).to(device)
+                        y = CEs(X)
                         loss = criterion(y, X)
-                        validation_running_loss[key] += loss.item() * len(sketches) / len(validation_dataloader.dataset)
+                        validation_running_loss[f'val_loss_{key}'] += loss.item() * len(sketches) / len(validation_dataloader.dataset)
         
+        def print_dict_loss(dict_loss):
+            for key, loss in dict_loss.items():
+                print(f'Loss {ley:12} : {loss:.6f}')
+                
         print()    
         print(f'Epoch - {epoch+1} / {args.epochs}')
-        for key, loss in running_loss.items():
-            print(f'Loss {key:10} : {loss:.6f}')
-        if args.dataset_validation:
-            for key, loss in validation_running_loss.items():
-                print(f'Loss {key:10} : {loss:.6f}')
+        print_dict_loss(running_loss)
+        if args.dataset_validation: print_dict_loss(validation_running_loss)
         print()
         
-        model.save(args.output)
+        if args.output:
+            model.save(args.output)
         
 if __name__ == '__main__':
     args = get_args_parser()
