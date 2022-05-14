@@ -18,6 +18,7 @@ def get_args_parser():
     parser.add_argument('--resume', type=str, default=None, help='Path to load model weights.')
     parser.add_argument('--output', type=str, default=None, help='Path to save weights.')
     parser.add_argument('--device', type=str, default='cuda')
+    parser.add_argument('--comet', type=str, default=None, help='comet.ml API')
     args = parser.parse_args()
     return args
 
@@ -44,6 +45,16 @@ class Stage1Dataset(Dataset):
         return sketch
         
 def main(args):
+    
+    if args.comet:
+        from comet_ml import Experiment
+        experiment = Experiment(
+            api_key=args.comet,
+            project_name="Deep Face Drawing: Training Stage 1",
+            workspace="xu-justin",
+            log_code=True
+        )
+    
     device = torch.device(args.device)
     print(f'Device : {device}')
     
@@ -114,7 +125,7 @@ def main(args):
         
         def print_dict_loss(dict_loss):
             for key, loss in dict_loss.items():
-                print(f'Loss {ley:12} : {loss:.6f}')
+                print(f'Loss {key:12} : {loss:.6f}')
                 
         print()    
         print(f'Epoch - {epoch+1} / {args.epochs}')
@@ -122,8 +133,15 @@ def main(args):
         if args.dataset_validation: print_dict_loss(validation_running_loss)
         print()
         
+        if args.comet:
+            experiment.log_metrics(running_loss, step=epoch+1)
+            if args.dataset_validation: experiment.log_metrics(validation_running_loss, step=epoch+1)
+        
         if args.output:
             model.save(args.output)
+            
+    if args.comet:
+        experiment.end()
         
 if __name__ == '__main__':
     args = get_args_parser()

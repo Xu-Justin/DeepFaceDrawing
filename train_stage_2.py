@@ -10,7 +10,7 @@ from model import DeepFaceDrawing
 
 def get_args_parser():
     import argparse
-    parser = argparse.ArgumentParser(description='Deep Face Drawing: Train Stage 1')
+    parser = argparse.ArgumentParser(description='Deep Face Drawing: Train Stage 2')
     parser.add_argument('--dataset', type=str, required=True, help='Path to training dataset.')
     parser.add_argument('--dataset_validation', type=str, default=None, help='Path to validation dataset.')
     parser.add_argument('--batch_size', type=int, default=1)
@@ -19,6 +19,7 @@ def get_args_parser():
     parser.add_argument('--resume_CE', type=str, default=None, help='Path to load Component Embedding model weights. Required if --resume is not given. Skipped if --resume is given.')
     parser.add_argument('--output', type=str, default=None, help='Path to save weights.')
     parser.add_argument('--device', type=str, default='cuda')
+    parser.add_argument('--comet', type=str, default=None, help='comet.ml API')
     args = parser.parse_args()
     return args
 
@@ -55,6 +56,16 @@ class Stage2Dataset(Dataset):
         return sketch, photo
         
 def main(args):
+    
+    if args.comet:
+        from comet_ml import Experiment
+        experiment = Experiment(
+            api_key=args.comet,
+            project_name="Deep Face Drawing: Training Stage 2",
+            workspace="xu-justin",
+            log_code=True
+        )
+    
     device = torch.device(args.device)
     print(f'Device : {device}')
     
@@ -171,7 +182,7 @@ def main(args):
             
         def print_dict_loss(dict_loss):
             for key, loss in dict_loss.items():
-                print(f'Loss {ley:12} : {loss:.6f}')
+                print(f'Loss {key:12} : {loss:.6f}')
                 
         print()    
         print(f'Epoch - {epoch+1} / {args.epochs}')
@@ -179,8 +190,15 @@ def main(args):
         if args.dataset_validation: print_dict_loss(validation_running_loss)
         print()
         
+        if args.comet:
+            experiment.log_metrics(running_loss, step=epoch+1)
+            if args.dataset_validation: experiment.log_metrics(validation_running_loss, step=epoch+1)
+        
         if args.output:
             model.save(args.output)
+    
+    if args.comet:
+        experiment.end()
         
 if __name__ == '__main__':
     args = get_args_parser()
