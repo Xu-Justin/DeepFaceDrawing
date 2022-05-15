@@ -405,6 +405,7 @@ class Generator(nn.Module):
             x = self.resnet[i](x)
         for i in range(len(self.decoder)):
             x = self.decoder[i](x)
+        x = torch.tanh(x)
         return x
         
 class Discriminator(nn.Module):
@@ -434,7 +435,7 @@ class Discriminator(nn.Module):
             x = self.pool[i](x)
         for i in range(len(self.dis)):
             x = self.dis[i](x)
-        x = torch.sigmoid(x)
+        x = torch.tanh(x)
         return x
 
 class ImageSynthesis(nn.Module):

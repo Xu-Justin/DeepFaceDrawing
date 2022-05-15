@@ -3,9 +3,7 @@ from tqdm import tqdm
 from PIL import Image
 
 import torch
-from torch.utils.data import Dataset, DataLoader
-from torchvision import transforms
-
+from dataset import dataloader
 from model import DeepFaceDrawing
 
 def get_args_parser():
@@ -22,28 +20,6 @@ def get_args_parser():
     args = parser.parse_args()
     return args
 
-class Stage1Dataset(Dataset):
-    
-    def __init__(self, path, transform, augmentation_transform=None):
-        self.transform = transform
-        self.augmentation_transform = augmentation_transform
-        
-        folder_sketch = os.path.join(path, 'sketch')
-        
-        self.path_sketches = []
-        for file_name_sketch in os.listdir(folder_sketch):
-            self.path_sketches.append(os.path.join(folder_sketch, file_name_sketch))
-    
-    def __len__(self, ):
-        return len(self.path_sketches)
-    
-    def __getitem__(self, idx):
-        sketch = Image.open(self.path_sketches[idx])
-        if self.augmentation_transform:
-            sketch = self.augmentation_transform(sketch)
-        sketch = self.transform(sketch)
-        return sketch
-        
 def main(args):
     
     if args.comet:
@@ -67,19 +43,11 @@ def main(args):
         model.load(args.resume)
         
     model.to(device)
-        
-    transform = transforms.Compose([
-        transforms.Grayscale(),
-        transforms.Resize(512),
-        transforms.ToTensor()
-    ])
-    augmentation_transform = None
-    train_dataset = Stage1Dataset(args.dataset, transform, augmentation_transform)
-    train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=10)
+
+    train_dataloader = dataloader(args.dataset, batch_size=args.batch_size, load_photo=False)
     
     if args.dataset_validation:
-        validation_dataset = Stage1Dataset(args.dataset_validation, transform)
-        validation_dataloader = DataLoader(validation_dataset, batch_size=args.batch_size, shuffle=True, num_workers=10)
+        validation_dataloader = dataloader(args.dataset_validation, batch_size=args.batch_size, load_photo=False)
     
     optimizer = torch.optim.Adam(model.parameters(), lr=0.0002, betas=(0.5, 0.999))
     criterion = torch.nn.MSELoss()
