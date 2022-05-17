@@ -62,3 +62,13 @@ def dataloader(path, batch_size, load_photo=True, shuffle=True, num_workers=10):
     custom_dataset = dataset(path, load_photo=load_photo)
     custom_dataloader = DataLoader(custom_dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers)
     return custom_dataloader
+
+def load_one_sketch(path):
+    sketch = Image.open(path)
+    sketch = transform_sketch(sketch)
+    return sketch.unsqueeze(0)
+
+def load_one_photo(path):
+    photo = Image.open(path)
+    photo = transform_photo(photo)
+    return photo.unsqueeze(0)

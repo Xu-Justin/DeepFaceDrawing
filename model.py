@@ -435,7 +435,7 @@ class Discriminator(nn.Module):
             x = self.pool[i](x)
         for i in range(len(self.dis)):
             x = self.dis[i](x)
-        x = torch.tanh(x)
+        x = torch.sigmoid(x)
         return x
 
 class ImageSynthesis(nn.Module):

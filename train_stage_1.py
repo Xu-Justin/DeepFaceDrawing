@@ -17,10 +17,18 @@ def get_args_parser():
     parser.add_argument('--output', type=str, default=None, help='Path to save weights.')
     parser.add_argument('--device', type=str, default='cuda')
     parser.add_argument('--comet', type=str, default=None, help='comet.ml API')
+    parser.add_argument('--comet_log_image', type=str, default=None, help='Path to model input image to be inference and log the result to comet.ml. Skipped if --comet is not given.')
     args = parser.parse_args()
     return args
 
+def validation_parser(args):
+    if not args.comet:
+        if args.comet_log_image: print('args.comet_log_image will be skipped.')
+    
 def main(args):
+    
+    device = torch.device(args.device)
+    print(f'Device : {device}')
     
     if args.comet:
         from comet_ml import Experiment
@@ -30,9 +38,11 @@ def main(args):
             workspace="xu-justin",
             log_code=True
         )
-    
-    device = torch.device(args.device)
-    print(f'Device : {device}')
+        
+        if args.comet_log_image:
+            from dataset import load_one_sketch
+            from utils import stack_patches
+            log_image_sketch = load_one_sketch(args.comet_log_image).to(device)
     
     model = DeepFaceDrawing(
         CE=True, CE_encoder=True, CE_decoder=True,
@@ -64,14 +74,29 @@ def main(args):
         
         model.train()
         for sketches in tqdm(train_dataloader, desc=f'Epoch - {epoch+1} / {args.epochs}'):
+            
+            iteration_loss = {
+                'loss_left_eye_it' : 0,
+                'loss_right_eye_it' : 0,
+                'loss_nose_it' : 0,
+                'loss_mouth_it' : 0,
+                'loss_background_it' : 0
+            }
+            
             optimizer.zero_grad()
             for key, CEs in model.CE.items():
                 X = CEs.crop(sketches).to(device)
                 y = CEs(X)
                 loss = criterion(y, X)
                 loss.backward()
-                running_loss[f'loss_{key}'] += loss.item() * len(sketches) / len(train_dataloader.dataset)
+                iteration_loss[f'loss_{key}_it'] += loss.item()
             optimizer.step()
+                
+            for key, loss in iteration_loss.items():
+                running_loss[key[:-3]] += loss * len(sketches) / len(train_dataloader.dataset)
+            
+            if args.comet:
+                experiment.log_metrics(iteration_loss)
         
         if args.dataset_validation:
             validation_running_loss = {
@@ -85,11 +110,26 @@ def main(args):
             model.eval()
             with torch.no_grad():
                 for sketches in tqdm(validation_dataloader, desc=f'Validation Epoch - {epoch+1} / {args.epochs}'):
+                    
+                    validation_iteration_loss = {
+                        'val_loss_left_eye_it' : 0,
+                        'val_loss_right_eye_it' : 0,
+                        'val_loss_nose_it' : 0,
+                        'val_loss_mouth_it' : 0,
+                        'val_loss_background_it' : 0
+                    }
+                    
                     for key, CEs in model.CE.items():
                         X = CEs.crop(sketches).to(device)
                         y = CEs(X)
                         loss = criterion(y, X)
-                        validation_running_loss[f'val_loss_{key}'] += loss.item() * len(sketches) / len(validation_dataloader.dataset)
+                        validation_iteration_loss[f'val_loss_{key}_it'] += loss.item()
+                        
+                    for key, loss in validation_iteration_loss.items():
+                        validation_running_loss[key[:-3]] += loss * len(sketches) / len(validation_dataloader.dataset)
+                    
+                    if args.comet:
+                        experiment.log_metrics(validation_iteration_loss)
         
         def print_dict_loss(dict_loss):
             for key, loss in dict_loss.items():
@@ -104,6 +144,10 @@ def main(args):
         if args.comet:
             experiment.log_metrics(running_loss, step=epoch+1)
             if args.dataset_validation: experiment.log_metrics(validation_running_loss, step=epoch+1)
+            if args.comet_log_image:
+                log_image_patches = model.CE_Decode(model.CE_Encode(log_image_sketch))
+                log_image_patches = stack_patches(log_image_patches)[0]
+                experiment.log_image(log_image_patches, step=epoch+1)
         
         if args.output:
             model.save(args.output)
@@ -114,4 +158,5 @@ def main(args):
 if __name__ == '__main__':
     args = get_args_parser()
     print(args)
+    validation_parser(args)
     main(args)

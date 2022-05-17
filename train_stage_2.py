@@ -18,6 +18,7 @@ def get_args_parser():
     parser.add_argument('--output', type=str, default=None, help='Path to save weights.')
     parser.add_argument('--device', type=str, default='cuda')
     parser.add_argument('--comet', type=str, default=None, help='comet.ml API')
+    parser.add_argument('--comet_log_image', type=str, default=None, help='Path to model input image to be inference and log the result to comet.ml. Skipped if --comet is not given.')
     args = parser.parse_args()
     return args
 
@@ -26,8 +27,13 @@ def validation_parser(args):
         if args.resume_CE: print('args.resume_CE will be skipped.')
     else:
         assert args.resume_CE, "Both args.resume and args.resume_CE can't be None." 
+    if not args.comet:
+        if args.comet_log_image: print('args.comet_log_image will be skipped.')
     
 def main(args):
+    
+    device = torch.device(args.device)
+    print(f'Device : {device}')
     
     if args.comet:
         from comet_ml import Experiment
@@ -37,9 +43,11 @@ def main(args):
             workspace="xu-justin",
             log_code=True
         )
-    
-    device = torch.device(args.device)
-    print(f'Device : {device}')
+        
+        if args.comet_log_image:
+            from dataset import load_one_sketch
+            from utils import stack_preview
+            log_image_sketch = load_one_sketch(args.comet_log_image).to(device)
     
     model = DeepFaceDrawing(
         CE=True, CE_encoder=True, CE_decoder=False,
@@ -93,22 +101,30 @@ def main(args):
             optimizer_generator.zero_grad()
             loss_G_L1 = criterion_generator(fake_photos, photos)
             patches = model.IS.Discriminate(spatial_map, fake_photos)
-            loss_G_BCE = torch.tensor([criterion_discriminator(itanh(patch), torch.full(patch.shape, label_real, dtype=torch.float, requires_grad=True).to(device)) for patch in patches], dtype=torch.float, requires_grad=True).sum()
+            loss_G_BCE = torch.tensor([criterion_discriminator(patch, torch.full(patch.shape, label_real, dtype=torch.float, requires_grad=True).to(device)) for patch in patches], dtype=torch.float, requires_grad=True).sum()
             loss_G = 100 * loss_G_L1 + loss_G_BCE
             loss_G.backward()
             optimizer_generator.step()
             
             optimizer_discriminator.zero_grad()
             patches = model.IS.Discriminate(spatial_map.detach(), fake_photos.detach())
-            loss_D_fake = torch.tensor([criterion_discriminator(itanh(patch), torch.full(patch.shape, label_fake, dtype=torch.float, requires_grad=True).to(device)) for patch in patches], dtype=torch.float, requires_grad=True).sum()
+            loss_D_fake = torch.tensor([criterion_discriminator(patch, torch.full(patch.shape, label_fake, dtype=torch.float, requires_grad=True).to(device)) for patch in patches], dtype=torch.float, requires_grad=True).sum()
             patches = model.IS.Discriminate(spatial_map.detach(), photos.detach())
-            loss_D_real = torch.tensor([criterion_discriminator(itanh(patch), torch.full(patch.shape, label_real, dtype=torch.float, requires_grad=True).to(device)) for patch in patches], dtype=torch.float, requires_grad=True).sum()
+            loss_D_real = torch.tensor([criterion_discriminator(patch, torch.full(patch.shape, label_real, dtype=torch.float, requires_grad=True).to(device)) for patch in patches], dtype=torch.float, requires_grad=True).sum()
             loss_D = loss_D_fake + loss_D_real
             loss_D.backward()
             optimizer_discriminator.step()
             
-            running_loss['loss_G'] += loss_G.item() * len(sketches) / len(train_dataloader.dataset)
-            running_loss['loss_D'] += loss_D.item() * len(sketches) / len(train_dataloader.dataset)
+            iteration_loss = {
+                'loss_G_it' : loss_G.item(),
+                'loss_D_it' : loss_D.item()
+            }
+            
+            for key, loss in iteration_loss.items():
+                running_loss[key[:-3]] = loss * len(sketches) / len(train_dataloader.dataset)
+            
+            if args.comet:
+                experiment.log_metrics(iteration_loss)
         
         if args.dataset_validation:
             validation_running_loss = {
@@ -129,18 +145,26 @@ def main(args):
                     
                     loss_G_L1 = criterion_generator(fake_photos, photos)
                     patches = model.IS.Discriminate(spatial_map, fake_photos)
-                    loss_G_BCE = torch.tensor([criterion_discriminator(itanh(patch), torch.full(patch.shape, label_real, dtype=torch.float, requires_grad=True).to(device)) for patch in patches], dtype=torch.float, requires_grad=True).sum()
+                    loss_G_BCE = torch.tensor([criterion_discriminator(patch, torch.full(patch.shape, label_real, dtype=torch.float, requires_grad=True).to(device)) for patch in patches], dtype=torch.float, requires_grad=True).sum()
                     loss_G = 100 * loss_G_L1 + loss_G_BCE
                     
                     patches = model.IS.Discriminate(spatial_map.detach(), fake_photos.detach())
-                    loss_D_fake = torch.tensor([criterion_discriminator(itanh(patch), torch.full(patch.shape, label_fake, dtype=torch.float, requires_grad=True).to(device)) for patch in patches], dtype=torch.float, requires_grad=True).sum()
+                    loss_D_fake = torch.tensor([criterion_discriminator(patch, torch.full(patch.shape, label_fake, dtype=torch.float, requires_grad=True).to(device)) for patch in patches], dtype=torch.float, requires_grad=True).sum()
                     patches = model.IS.Discriminate(spatial_map.detach(), photos.detach())
-                    loss_D_real = torch.tensor([criterion_discriminator(itanh(patch), torch.full(patch.shape, label_real, dtype=torch.float, requires_grad=True).to(device)) for patch in patches], dtype=torch.float, requires_grad=True).sum()
+                    loss_D_real = torch.tensor([criterion_discriminator(patch, torch.full(patch.shape, label_real, dtype=torch.float, requires_grad=True).to(device)) for patch in patches], dtype=torch.float, requires_grad=True).sum()
                     loss_D = loss_D_fake + loss_D_real
                     
-                    validation_running_loss['val_loss_G'] += loss_G.item() * len(sketches) / len(validation_dataloader.dataset)
-                    validation_running_loss['val_loss_D'] += loss_D.item() * len(sketches) / len(validation_dataloader.dataset)
-            
+                    validation_iteration_loss = {
+                        'val_loss_G_it' : loss_G.item(),
+                        'val_loss_D_it' : loss_D.item()
+                    }
+                    
+                    for key, loss in iteration_loss.items():
+                        validation_running_loss[key[:-3]] = loss * len(sketches) / len(validation_dataloader.dataset)
+                    
+                    if args.comet:
+                        experiment.log_metrics(validation_iteration_loss)
+                        
         def print_dict_loss(dict_loss):
             for key, loss in dict_loss.items():
                 print(f'Loss {key:12} : {loss:.6f}')
@@ -154,7 +178,11 @@ def main(args):
         if args.comet:
             experiment.log_metrics(running_loss, step=epoch+1)
             if args.dataset_validation: experiment.log_metrics(validation_running_loss, step=epoch+1)
-        
+            if args.comet_log_image:
+                log_image_fake = itanh(model(log_image_sketch))
+                log_image_fake = stack_preview(log_image_sketch, log_image_fake)[0]
+                experiment.log_image(log_image_fake, step=epoch+1)
+                
         if args.output:
             model.save(args.output)
     
@@ -163,6 +191,6 @@ def main(args):
         
 if __name__ == '__main__':
     args = get_args_parser()
-    validation_parser(args)
     print(args)
+    validation_parser(args)
     main(args)
