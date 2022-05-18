@@ -8,3 +8,4 @@ RUN apt-get update -qq && \
 
 COPY requirements.txt /workspace
 RUN pip --no-cache-dir install -r /workspace/requirements.txt
+RUN pip --no-cache-dir install dvc[gdrive]
