@@ -13,6 +13,9 @@ def rescale(numpy_array):
 def numpy2PIL(numpy_array):
     return PIL.Image.fromarray(np.uint8(numpy_array * 255))
 
+def tensor2PIL(tensor_array):
+    return numpy2PIL(tensor2numpy(tensor_array))
+
 def resize(Image, dim):
     return Image.resize(dim)
 
