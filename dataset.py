@@ -6,6 +6,7 @@ from PIL import Image
 
 transform_sketch = transforms.Compose([
     transforms.Grayscale(),
+    transforms.functional.equalize(),
     transforms.Resize(512),
     transforms.ToTensor(),
     transforms.Normalize(mean=[0], std=[0.5])
@@ -16,6 +17,9 @@ transform_photo = transforms.Compose([
     transforms.ToTensor()
 ])
 
+def augmentation(sketch, photo=None):
+    raise NotImplementedError
+
 def tanh(x):
     return (x * 2) - 1
 
@@ -24,8 +28,9 @@ def itanh(x):
 
 class dataset(Dataset):
     
-    def __init__(self, path, transform_sketch=transform_sketch, transform_photo=transform_photo, load_photo=True):
+    def __init__(self, path, transform_sketch=transform_sketch, transform_photo=transform_photo, load_photo=True, augmentation=False):
         self.load_photo = load_photo
+        self.augmentation = augmentation
         
         self.transfrom_sketch = transform_sketch
         self.transfrom_photo = transform_photo
@@ -54,6 +59,10 @@ class dataset(Dataset):
             photo = Image.open(self.path_photos[idx])
             photo = self.transfrom_photo(photo)
         
+        if self.augmentation:
+            if self.load_photo: sketch, photo = augmentation(sketch, photo)
+            else: sketch = augmentation(sketch)
+            
         if self.load_photo: return sketch, photo
         else: return sketch
 
