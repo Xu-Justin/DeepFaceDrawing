@@ -53,7 +53,7 @@ def main(args):
         
     model.to(device)
 
-    train_dataloader = dataloader(args.dataset, batch_size=args.batch_size, load_photo=False)
+    train_dataloader = dataloader(args.dataset, batch_size=args.batch_size, load_photo=False, augmentation=True)
     
     if args.dataset_validation:
         validation_dataloader = dataloader(args.dataset_validation, batch_size=args.batch_size, load_photo=False)

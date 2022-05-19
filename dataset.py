@@ -87,8 +87,8 @@ class dataset(Dataset):
         if self.load_photo: return sketch, photo
         else: return sketch
 
-def dataloader(path, batch_size, load_photo=True, shuffle=True, num_workers=4):
-    custom_dataset = dataset(path, load_photo=load_photo)
+def dataloader(path, batch_size, load_photo=True, shuffle=True, num_workers=4, augmentation=False):
+    custom_dataset = dataset(path, load_photo=load_photo, augmentation=augmentation)
     custom_dataloader = DataLoader(custom_dataset, batch_size=batch_size, shuffle=shuffle, num_workers=num_workers)
     return custom_dataloader
 
