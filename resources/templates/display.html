@@ -1,0 +1,20 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+
+<div class="card p-3" style="width: 70rem;">
+    <div class="card-body">
+        
+        <div class="d-flex justify-content-around m-3">
+            <img src="{{ url_for('static', filename='sketch/'+file_name) }}" width="500px" />
+            <img src="{{ url_for('static', filename='photo/'+file_name)}}" width="500px" />
+        </div>
+
+        <div class="d-flex justify-content-center">
+            <a href="{{ url_for('index') }}" class="btn btn-primary" style="width: 8rem">Back</a>
+        </div>
+
+    </div>
+</div>
+
+{% endblock %}

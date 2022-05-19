@@ -6,3 +6,6 @@ Pillow==9.1.0
 tqdm==4.63.1
 scikit-learn==1.0.2
 matplotlib==3.5.1
+
+Flask==2.0.3
+Flask-SQLAlchemy==2.5.1
