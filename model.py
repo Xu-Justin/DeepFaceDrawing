@@ -597,7 +597,7 @@ class DeepFaceDrawing(nn.Module):
             'left_eye' : latent_LeftEye,
             'right_eye' : latent_RightEye,
             'nose' : latent_Nose,
-            'mouth' : latent_Nose,
+            'mouth' : latent_Mouth,
             'background' : latent_Background
         }
     
