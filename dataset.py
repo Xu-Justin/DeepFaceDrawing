@@ -1,7 +1,7 @@
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
 
-import os
+import os, random
 from PIL import Image
 
 transform_sketch = transforms.Compose([
@@ -18,8 +18,28 @@ transform_photo = transforms.Compose([
 ])
 
 def augmentation(sketch, photo=None):
-    raise NotImplementedError
-
+    apply_affine = random.random() > 0.05
+    param_affine = transforms.RandomAffine.get_params(
+        degrees=(-5, 5),
+        translate=(0.05, 0.05),
+        scale_ranges=(0.95, 1.05),
+        shears=(-10, 10),
+        img_size=(512, 512)   
+    )
+    
+    sketch = transforms.Resize(512)(sketch)
+    sketch = transforms.ToTensor()(sketch)
+    sketch = transforms.RandomErasing(p=0.9, value=1)(sketch)
+    sketch = transforms.ToPILImage()(sketch)
+    if apply_affine: sketch = transforms.functional.affine(sketch, param_affine[0], param_affine[1], param_affine[2], param_affine[3], fill=255)
+    
+    if photo:
+        photo = transforms.Resize(512)(photo)
+        if apply_affine: photo = transforms.functional.affine(photo, param_affine[0], param_affine[1], param_affine[2], param_affine[3], fill=0)
+    
+    if photo: return sketch, photo
+    else: return sketch
+    
 def tanh(x):
     return (x * 2) - 1
 
@@ -53,16 +73,17 @@ class dataset(Dataset):
     
     def __getitem__(self, idx):
         sketch = Image.open(self.path_sketches[idx])
-        sketch = self.transfrom_sketch(sketch)
-        
         if self.load_photo:
             photo = Image.open(self.path_photos[idx])
-            photo = self.transfrom_photo(photo)
         
         if self.augmentation:
             if self.load_photo: sketch, photo = augmentation(sketch, photo)
             else: sketch = augmentation(sketch)
-            
+        
+        sketch = self.transfrom_sketch(sketch)
+        if self.load_photo:
+            photo = self.transfrom_photo(photo)
+        
         if self.load_photo: return sketch, photo
         else: return sketch
 
