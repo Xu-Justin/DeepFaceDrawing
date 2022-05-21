@@ -56,9 +56,9 @@ def main(args):
     )
     
     if args.resume:
-        model.load(args.resume)
+        model.load(args.resume, map_location=device)
     else:
-        model.load_CE(args.resume_CE)
+        model.load_CE(args.resume_CE, map_location=device)
     
     model.to(device)
     

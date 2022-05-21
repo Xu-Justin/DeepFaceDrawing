@@ -49,7 +49,7 @@ def main(args):
     )
     
     if args.resume:
-        model.load(args.resume)
+        model.load(args.resume, map_location=device)
         
     model.to(device)
 

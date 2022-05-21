@@ -51,7 +51,7 @@ def main(args, storage):
         IS=True, IS_generator=True, IS_discriminator=False,
         manifold=args.manifold
     )
-    model.load(args.weight)
+    model.load(args.weight, map_location=device)
     model.to(args.device)
     
     template_folder = os.path.abspath('resources/templates/')

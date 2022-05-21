@@ -182,22 +182,22 @@ class ComponentEmbedding(nn.Module):
         if self.decoder: self.save_decoder(self.get_path(path, 'decoder'))
         if self.output: self.save_output(self.get_path(path, 'output'))
     
-    def load_encoder(self, path):
-        self.encoder.load_state_dict(torch.load(path))
+    def load_encoder(self, path, map_location='cuda'):
+        self.encoder.load_state_dict(torch.load(path, map_location=map_location))
         print(f'Loaded Component Embedding : encoder from {path}')
     
-    def load_decoder(self, path):
-        self.decoder.load_state_dict(torch.load(path))
+    def load_decoder(self, path, map_location='cuda'):
+        self.decoder.load_state_dict(torch.load(path, map_location=map_location))
         print(f'Loaded Component Embedding : decoder from {path}')
     
-    def load_output(self, path):
-        self.output.load_state_dict(torch.load(path))
+    def load_output(self, path, map_location='cuda'):
+        self.output.load_state_dict(torch.load(path, map_location=map_location))
         print(f'Loaded Component Embedding : output from {path}')
     
-    def load(self, path):
-        if self.encoder: self.load_encoder(self.get_path(path, 'encoder'))
-        if self.decoder: self.load_decoder(self.get_path(path, 'decoder'))
-        if self.output: self.load_output(self.get_path(path, 'output'))
+    def load(self, path, map_location='cuda'):
+        if self.encoder: self.load_encoder(self.get_path(path, 'encoder'), map_location=map_location)
+        if self.decoder: self.load_decoder(self.get_path(path, 'decoder'), map_location=map_location)
+        if self.output: self.load_output(self.get_path(path, 'output'), map_location=map_location)
 
 class ComponentEmbedding_Master(ComponentEmbedding):
     
@@ -215,8 +215,8 @@ class ComponentEmbedding_Master(ComponentEmbedding):
     def save(self, path):
         super().save(os.path.join(path, self.prefix))
     
-    def load(self, path):
-        super().load(os.path.join(path, self.prefix))
+    def load(self, path, map_location='cuda'):
+        super().load(os.path.join(path, self.prefix), map_location=map_location)
     
 class ComponentEmbedding_LeftEye(ComponentEmbedding_Master):
     def __init__(self, encoder=True, decoder=True):
@@ -323,17 +323,17 @@ class FeatureMapping(nn.Module):
         if self.decoder: self.save_decoder(self.get_path(path, 'decoder'))
         if self.output: self.save_output(self.get_path(path, 'output'))
  
-    def load_decoder(self, path):
-        self.decoder.load_state_dict(torch.load(path))
+    def load_decoder(self, path, map_location='cuda'):
+        self.decoder.load_state_dict(torch.load(path, map_location=map_location))
         print(f'Loaded Feature Mapping : decoder from {path}')
     
-    def load_output(self, path):
-        self.output.load_state_dict(torch.load(path))
+    def load_output(self, path, map_location='cuda'):
+        self.output.load_state_dict(torch.load(path, map_location=map_location))
         print(f'Loaded Feature Mapping : output from {path}')
     
-    def load(self, path):
-        if self.decoder: self.load_decoder(self.get_path(path, 'decoder'))
-        if self.output: self.load_output(self.get_path(path, 'output'))
+    def load(self, path, map_location='cuda'):
+        if self.decoder: self.load_decoder(self.get_path(path, 'decoder'), map_location=map_location)
+        if self.output: self.load_output(self.get_path(path, 'output'), map_location=map_location)
 
 class FeatureMapping_Master(FeatureMapping):
     def __init__(self, CE, decoder=True):
@@ -353,8 +353,8 @@ class FeatureMapping_Master(FeatureMapping):
     def save(self, path):
         super().save(os.path.join(path, self.prefix))
     
-    def load(self, path):
-        super().load(os.path.join(path, self.prefix))
+    def load(self, path, map_location='cuda'):
+        super().load(os.path.join(path, self.prefix), map_location=map_location)
 
 class FeatureMapping_LeftEye(FeatureMapping_Master):
     def __init__(self, decoder=True):
@@ -513,27 +513,27 @@ class ImageSynthesis(nn.Module):
         if self.D2: self.save_D2(self.get_path(path, 'D2'))
         if self.D3: self.save_D3(self.get_path(path, 'D3'))
         
-    def load_G(self, path):
-        self.G.load_state_dict(torch.load(path))
+    def load_G(self, path, map_location='cuda'):
+        self.G.load_state_dict(torch.load(path, map_location=map_location))
         print(f'Loaded Image Synthesis : G from {path}')
     
-    def load_D1(self, path):
-        self.D1.load_state_dict(torch.load(path))
+    def load_D1(self, path, map_location='cuda'):
+        self.D1.load_state_dict(torch.load(path, map_location=map_location))
         print(f'Loaded Image Synthesis : D1 from {path}')
     
-    def load_D2(self, path):
-        self.D2.load_state_dict(torch.load(path))
+    def load_D2(self, path, map_location='cuda'):
+        self.D2.load_state_dict(torch.load(path, map_location=map_location))
         print(f'Loaded Image Synthesis : D2 from {path}')
     
-    def load_D3(self, path):
-        self.D3.load_state_dict(torch.load(path))
+    def load_D3(self, path, map_location='cuda'):
+        self.D3.load_state_dict(torch.load(path, map_location=map_location))
         print(f'Loaded Image Synthesis : D3 from {path}')
     
-    def load(self, path):
-        if self.G: self.load_G(self.get_path(path, 'G'))
-        if self.D1: self.load_D1(self.get_path(path, 'D1'))
-        if self.D2: self.load_D2(self.get_path(path, 'D2'))
-        if self.D3: self.load_D3(self.get_path(path, 'D3'))
+    def load(self, path, map_location='cuda'):
+        if self.G: self.load_G(self.get_path(path, 'G'), map_location=map_location)
+        if self.D1: self.load_D1(self.get_path(path, 'D1'), map_location=map_location)
+        if self.D2: self.load_D2(self.get_path(path, 'D2'), map_location=map_location)
+        if self.D3: self.load_D3(self.get_path(path, 'D3'), map_location=map_location)
         
 class DeepFaceDrawing(nn.Module):
     
@@ -669,24 +669,24 @@ class DeepFaceDrawing(nn.Module):
         if self.IS: self.save_IS(self.get_path(path, 'IS'))
         if self.MN: raise NotImplementedError
     
-    def load_CE(self, path):
+    def load_CE(self, path, map_location='cuda'):
         for key, CEs in self.CE.items():
-            CEs.load(path)
+            CEs.load(path, map_location=map_location)
     
-    def load_FM(self, path):
+    def load_FM(self, path, map_location='cuda'):
         for key, FMs in self.FM.items():
-            FMs.load(path)
+            FMs.load(path, map_location=map_location)
     
-    def load_IS(self, path):
-        self.IS.load(path)
+    def load_IS(self, path, map_location='cuda'):
+        self.IS.load(path, map_location=map_location)
         
-    def load_MN(self, path):
+    def load_MN(self, path, map_location='cuda'):
         raise NotImplementedError
     
-    def load(self, path):
-        if self.CE: self.load_CE(self.get_path(path, 'CE'))
-        if self.FM: self.load_FM(self.get_path(path, 'FM'))
-        if self.IS: self.load_IS(self.get_path(path, 'IS'))
+    def load(self, path, map_location='cuda'):
+        if self.CE: self.load_CE(self.get_path(path, 'CE'), map_location=map_location)
+        if self.FM: self.load_FM(self.get_path(path, 'FM'), map_location=map_location)
+        if self.IS: self.load_IS(self.get_path(path, 'IS'), map_location=map_location)
         if self.MN: raise NotImplementedError
         
 def main():
