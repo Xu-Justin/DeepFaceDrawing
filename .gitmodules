@@ -1,0 +1,3 @@
+[submodule "DVC"]
+	path = DVC
+	url = https://github.com/Xu-Justin/DeepFaceDrawing-DVC.git
