@@ -4,7 +4,7 @@ import torch.nn as nn
 from . import block
 
 class Generator(nn.Module):
-    def __init__(self, dimension, spatial_channel=32):
+    def __init__(self, dimension, spatial_channel):
         super().__init__()
         
         self.dimension = dimension
@@ -36,27 +36,22 @@ class Generator(nn.Module):
         return x
         
 class Discriminator(nn.Module):
-    def __init__(self, dimension, spatial_channel=32, avgpool=0):
+    def __init__(self, dimension, spatial_channel, avgpool):
         super().__init__()
         
         self.dimension = dimension
         self.spatial_channel = spatial_channel
         self.avgpool = avgpool
         
-        self.input_dimension = self.dimension
-        self.output_dimension = self.dimension
-        
         self.pool = nn.ModuleList()
         for i in range(avgpool):
             self.pool.append(nn.AvgPool2d(kernel_size=4, stride=2, padding=1))
-            self.output_dimension = self.output_dimension // 2
-        
+            
         self.dis_channels = [self.spatial_channel + 3, 64, 128, 256, 512]
         self.dis = nn.ModuleList()
         for i in range(1, len(self.dis_channels)):
             self.dis.append(block.Conv2D(self.dis_channels[i-1], self.dis_channels[i]))
-            self.output_dimension = self.output_dimension // 2
-    
+            
     def forward(self, x):
         for i in range(len(self.pool)):
             x = self.pool[i](x)
@@ -88,12 +83,12 @@ class Module(nn.Module):
             self.label_fake = 0
             
     def forward(self, x):
-        return self.Generate(x)
+        return self.generate(x)
     
     def generate(self, spatial_map):
         assert spatial_map.shape[1:] == (self.spatial_channel, self.dimension, self.dimension), f'[Image Synthesis : generate] Expected input spatial_map shape {(-1, self.spatial_channel, self.dimension, self.dimension)}, but received {spatial_map.shape}.'
         photo = self.G(spatial_map)
-        assert photo.shape[1:] == (3, self.dimension, self.dimension), f'[Image Synthesis : generate] Expected output shape {(1, 3, self.dimension, self.dimension)}, but receivedd {photo.shape}.'
+        assert photo.shape[1:] == (3, self.dimension, self.dimension), f'[Image Synthesis : generate] Expected output shape {(1, 3, self.dimension, self.dimension)}, but yield {photo.shape}.'
         return photo
     
     def discriminate(self, spatial_map, photo):

@@ -4,7 +4,7 @@ import torch.nn as nn
 from . import autoencoder
 
 class Base(nn.Module):
-    def __init__(self, dimension, encoder=True, decoder=True, latent_dimension=512):
+    def __init__(self, dimension, latent_dimension, encoder=True, decoder=True):
         super().__init__()
         
         self.encoder = None
@@ -91,7 +91,7 @@ class Master(Base):
         self.part = part
         self.prefix = prefix
         self.crop_dimension = (part[0], part[1], part[0] + part[2], part[1] + part[2]) # xmin, ymin, xmax, ymax
-        super().__init__(self.part[2], encoder, decoder, self.latent_dimension)
+        super().__init__(self.part[2], self.latent_dimension, encoder, decoder)
     
     def crop(self, sketch):
         assert sketch.shape[1:] == (1, self.master_dimension, self.master_dimension), f'[Component Embedding : crop] Expected input shape {(-1, 1, self.master_dimension, self.master_dimension)}, but received {(sketch.shape)}.'

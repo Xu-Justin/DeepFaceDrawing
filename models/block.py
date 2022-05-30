@@ -4,8 +4,6 @@ import torch.nn.functional as F
 class Conv2D(nn.Module):
     def __init__(self, in_channels, out_channels):
         super().__init__()
-        self.in_channels = in_channels
-        self.out_channels = out_channels
         self.conv = nn.Conv2d(in_channels, out_channels, kernel_size=4, stride=2, padding=1)
         self.bn = nn.BatchNorm2d(out_channels)
         self.act = nn.LeakyReLU(0.1)
@@ -19,8 +17,6 @@ class Conv2D(nn.Module):
 class ConvTrans2D(nn.Module):
     def __init__(self, in_channels, out_channels):
         super().__init__()
-        self.in_channels = in_channels
-        self.out_channels = out_channels
         self.convT = nn.ConvTranspose2d(in_channels, out_channels, kernel_size=4, stride=2, padding=1)
         self.bn = nn.BatchNorm2d(out_channels)
         self.act = nn.LeakyReLU(0.1)

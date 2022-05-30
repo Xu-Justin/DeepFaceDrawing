@@ -2,7 +2,7 @@ import os
 import torch
 import torch.nn as nn
 
-__all__ = ['ComponentEmbedding', 'FeatureMapping', 'ImageSynthesis']
+__all__ = ['ComponentEmbedding', 'FeatureMapping', 'ImageSynthesis', 'block', 'autoencoder']
 from . import *
 
 class DeepFaceDrawing(nn.Module):

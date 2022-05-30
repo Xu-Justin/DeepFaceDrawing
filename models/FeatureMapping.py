@@ -4,7 +4,7 @@ import torch.nn as nn
 from . import autoencoder, ComponentEmbedding
 
 class Base(nn.Module):
-    def __init__(self, dimension, decoder=True, latent_dimension=512, spatial_channel=32):
+    def __init__(self, dimension, latent_dimension, spatial_channel, decoder=True):
         super().__init__()
 
         self.decoder = None
@@ -74,7 +74,7 @@ class Master(Base):
         self.part = CE.part
         self.prefix = CE.prefix
         self.crop_dimension = CE.crop_dimension
-        super().__init__(self.part[2], decoder, self.latent_dimension, self.spatial_channel)
+        super().__init__(self.part[2], self.latent_dimension, self.spatial_channel, decoder)
     
     def merge(self, spatial_map, patch):
         assert spatial_map.shape[1:] == (self.spatial_channel, self.master_dimension, self.master_dimension), f'[Feature Mapping : merge] Expected input shape of spatial_map {(-1, self.spatial_channel, self.master_dimension, self.master_dimension)}, but received {spatial_map.shape}.'
