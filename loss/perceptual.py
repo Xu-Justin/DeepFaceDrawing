@@ -19,6 +19,9 @@ class Perceptual:
         self.criterion = MAE()
     
     def compute(self, prediction, ground_truth):
+        prediction = self.preprocess(prediction)
+        ground_truth = self.ground_truth(ground_truth)
+        
         loss = 0
         for layer, module in self.model.features._modules.items():
             prediction = module(prediction)
