@@ -8,6 +8,7 @@ def vstack(images):
         max_width = max(max_width, width)
     else:
         for i, image in enumerate(images):
+            image = image.convert('RGB')
             width, height = image.size
             new_image = Image.new(image.mode, (max_width, height), (255, 255, 255))
             new_image.paste(image, (0, 0))
@@ -22,6 +23,7 @@ def hstack(images):
         max_height = max(max_height, height)
     else:
         for i, image in enumerate(images):
+            image = image.convert('RGB')
             width, height = image.size
             new_image = Image.new(image.mode, (width, max_height), (255, 255, 255))
             new_image.paste(image, (0, 0))
