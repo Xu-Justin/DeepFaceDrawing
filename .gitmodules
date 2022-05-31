@@ -4,3 +4,6 @@
 [submodule "datasets/sketch_simplification"]
 	path = datasets/sketch_simplification
 	url = git@github.com:Xu-Justin/sketch_simplification.git
+[submodule "person-face-sketches"]
+	path = person-face-sketches
+	url = https://github.com/Xu-Justin/person-face-sketches.git
