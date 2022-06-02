@@ -1,9 +1,6 @@
-from tqdm import tqdm
-from PIL import Image
-
 import torch
-from dataset import dataloader, tanh, itanh
-from model import DeepFaceDrawing
+import datasets, models, losses, utils
+from tqdm import tqdm
 
 def get_args_parser():
     import argparse
@@ -44,39 +41,40 @@ def main(args):
         )
         
         if args.comet_log_image:
-            from dataset import load_one_sketch
-            from utils import stack_preview
-            log_image_sketch = load_one_sketch(args.comet_log_image).to(device)
+            log_image_sketch = datasets.dataloader.load_one_sketch(args.comet_log_image).unsqueeze(0).to(device)
     
-    model = DeepFaceDrawing(
+    model = models.DeepFaceDrawing(
         CE=True, CE_encoder=True, CE_decoder=False,
         FM=True, FM_decoder=True,
         IS=True, IS_generator=True, IS_discriminator=True,
         manifold=False
     )
     
+    if args.comet:
+        experiment.set_model_graph(model)
+
     if args.resume:
         model.load(args.resume, map_location=device)
     else:
-        model.load_CE(args.resume_CE, map_location=device)
+        model.CE.load(args.resume_CE, map_location=device)
     
     model.to(device)
     
-    train_dataloader = dataloader(args.dataset, batch_size=args.batch_size, load_photo=True, augmentation=True)
+    train_dataloader = datasets.dataloader.dataloader(args.dataset, batch_size=args.batch_size, load_photo=True, augmentation=False)
     
     if args.dataset_validation:
-        validation_dataloader = dataloader(args.dataset_validation, batch_size=args.batch_size, load_photo=True)
+        validation_dataloader = datasets.dataloader.dataloader(args.dataset_validation, batch_size=args.batch_size, load_photo=True)
     
-    for key, CEs in model.CE.items():
-        for param in CEs.parameters():
+    for key, component in model.CE.components.items():
+        for param in component.parameters():
             param.requires_grad = False
-    
+
     optimizer_generator = torch.optim.Adam( list(model.FM.parameters()) + list(model.IS.G.parameters()) , lr=0.0002, betas=(0.5, 0.999))
     optimizer_discriminator = torch.optim.Adam( list(model.IS.D1.parameters()) + list(model.IS.D2.parameters()) + list(model.IS.D3.parameters()) , lr=0.0002, betas=(0.5, 0.999))
     
-    criterion_generator = torch.nn.L1Loss()
-    criterion_discriminator = torch.nn.BCELoss()
-    
+    l1 = losses.L1()
+    bce = losses.BCE()
+
     label_real = model.IS.label_real
     label_fake = model.IS.label_fake
     
@@ -91,25 +89,25 @@ def main(args):
         for sketches, photos in tqdm(train_dataloader, desc=f'Epoch - {epoch+1} / {args.epochs}'):
             
             sketches = sketches.to(device)
-            photos = tanh(photos).to(device)
+            photos = photos.to(device)
             
-            latents = model.CE_Encode(sketches)
-            spatial_map = model.FM_Decode(latents)
-            fake_photos = model.IS_Synthesis(spatial_map)
+            latents = model.CE.encode(model.CE.crop(sketches))
+            spatial_map = model.FM.merge(model.FM.decode(latents))
+            fake_photos = model.IS.generate(spatial_map)
             
             optimizer_generator.zero_grad()
-            loss_G_L1 = criterion_generator(fake_photos, photos)
-            patches = model.IS.Discriminate(spatial_map, fake_photos)
-            loss_G_BCE = torch.tensor([criterion_discriminator(patch, torch.full(patch.shape, label_real, dtype=torch.float, requires_grad=True).to(device)) for patch in patches], dtype=torch.float, requires_grad=True).sum()
-            loss_G = 100 * loss_G_L1 + loss_G_BCE
+            loss_G_L1 = l1.compute(fake_photos, photos)
+            patches = model.IS.discriminate(spatial_map, fake_photos)
+            loss_G_BCE = torch.tensor([bce.compute(patch, torch.full(patch.shape, label_real, dtype=torch.float, requires_grad=True).to(device)) for patch in patches], dtype=torch.float, requires_grad=True).sum()
+            loss_G = loss_G_L1 + loss_G_BCE
             loss_G.backward()
             optimizer_generator.step()
             
             optimizer_discriminator.zero_grad()
-            patches = model.IS.Discriminate(spatial_map.detach(), fake_photos.detach())
-            loss_D_fake = torch.tensor([criterion_discriminator(patch, torch.full(patch.shape, label_fake, dtype=torch.float, requires_grad=True).to(device)) for patch in patches], dtype=torch.float, requires_grad=True).sum()
-            patches = model.IS.Discriminate(spatial_map.detach(), photos.detach())
-            loss_D_real = torch.tensor([criterion_discriminator(patch, torch.full(patch.shape, label_real, dtype=torch.float, requires_grad=True).to(device)) for patch in patches], dtype=torch.float, requires_grad=True).sum()
+            patches = model.IS.discriminate(spatial_map.detach(), fake_photos.detach())
+            loss_D_fake = torch.tensor([bce.compute(patch, torch.full(patch.shape, label_fake, dtype=torch.float, requires_grad=True).to(device)) for patch in patches], dtype=torch.float, requires_grad=True).sum()
+            patches = model.IS.discriminate(spatial_map.detach(), photos.detach())
+            loss_D_real = torch.tensor([bce.compute(patch, torch.full(patch.shape, label_real, dtype=torch.float, requires_grad=True).to(device)) for patch in patches], dtype=torch.float, requires_grad=True).sum()
             loss_D = loss_D_fake + loss_D_real
             loss_D.backward()
             optimizer_discriminator.step()
@@ -136,21 +134,21 @@ def main(args):
                 for sketches, photos in tqdm(validation_dataloader, desc=f'Validation Epoch - {epoch+1} / {args.epochs}'):
             
                     sketches = sketches.to(device)
-                    photos = tanh(photos).to(device)
+                    photos = photos.to(device)
                     
-                    latents = model.CE_Encode(sketches)
-                    spatial_map = model.FM_Decode(latents)
-                    fake_photos = model.IS_Synthesis(spatial_map)
+                    latents = model.CE.encode(model.CE.crop(sketches))
+                    spatial_map = model.FM.merge(model.FM.decode(latents))
+                    fake_photos = model.IS.generate(spatial_map)
                     
-                    loss_G_L1 = criterion_generator(fake_photos, photos)
-                    patches = model.IS.Discriminate(spatial_map, fake_photos)
-                    loss_G_BCE = torch.tensor([criterion_discriminator(patch, torch.full(patch.shape, label_real, dtype=torch.float, requires_grad=True).to(device)) for patch in patches], dtype=torch.float, requires_grad=True).sum()
+                    loss_G_L1 = l1.compute(fake_photos, photos)
+                    patches = model.IS.discriminate(spatial_map, fake_photos)
+                    loss_G_BCE = torch.tensor([bce.compute(patch, torch.full(patch.shape, label_real, dtype=torch.float).to(device)) for patch in patches], dtype=torch.float).sum()
                     loss_G = 100 * loss_G_L1 + loss_G_BCE
                     
-                    patches = model.IS.Discriminate(spatial_map.detach(), fake_photos.detach())
-                    loss_D_fake = torch.tensor([criterion_discriminator(patch, torch.full(patch.shape, label_fake, dtype=torch.float, requires_grad=True).to(device)) for patch in patches], dtype=torch.float, requires_grad=True).sum()
-                    patches = model.IS.Discriminate(spatial_map.detach(), photos.detach())
-                    loss_D_real = torch.tensor([criterion_discriminator(patch, torch.full(patch.shape, label_real, dtype=torch.float, requires_grad=True).to(device)) for patch in patches], dtype=torch.float, requires_grad=True).sum()
+                    patches = model.IS.discriminate(spatial_map.detach(), fake_photos.detach())
+                    loss_D_fake = torch.tensor([bce.compute(patch, torch.full(patch.shape, label_fake, dtype=torch.float).to(device)) for patch in patches], dtype=torch.float).sum()
+                    patches = model.IS.discriminate(spatial_map.detach(), photos.detach())
+                    loss_D_real = torch.tensor([bce.compute(patch, torch.full(patch.shape, label_real, dtype=torch.float).to(device)) for patch in patches], dtype=torch.float).sum()
                     loss_D = loss_D_fake + loss_D_real
                     
                     validation_iteration_loss = {
@@ -178,8 +176,8 @@ def main(args):
             experiment.log_metrics(running_loss, step=epoch+1)
             if args.dataset_validation: experiment.log_metrics(validation_running_loss, step=epoch+1)
             if args.comet_log_image:
-                log_image_fake = itanh(model(log_image_sketch))
-                log_image_fake = stack_preview(log_image_sketch, log_image_fake)[0]
+                log_image_fake = model(log_image_sketch)
+                log_image_fake = utils.stack.hstack([utils.convert.tensor2PIL(log_image_sketch[0]), utils.convert.tensor2PIL(log_image_fake[0])])
                 experiment.log_image(log_image_fake, step=epoch+1)
                 
         if args.output:

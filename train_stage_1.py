@@ -1,9 +1,6 @@
-from tqdm import tqdm
-from PIL import Image
-
 import torch
-from dataset import dataloader
-from model import DeepFaceDrawing
+import datasets, models, losses, utils
+from tqdm import tqdm
 
 def get_args_parser():
     import argparse
@@ -39,27 +36,30 @@ def main(args):
         )
         
         if args.comet_log_image:
-            from dataset import load_one_sketch
-            from utils import stack_patches
-            log_image_sketch = load_one_sketch(args.comet_log_image).to(device)
+            log_image_sketch = datasets.dataloader.load_one_sketch(args.comet_log_image).unsqueeze(0).to(device)
     
-    model = DeepFaceDrawing(
+    model = models.DeepFaceDrawing(
         CE=True, CE_encoder=True, CE_decoder=True,
-        FM=False, IS=False, manifold=False
+        FM=False, FM_decoder=False,
+        IS=False, IS_generator=False, IS_discriminator=False,
+        manifold=False
     )
+
+    if args.comet:
+        experiment.set_model_graph(model)
     
     if args.resume:
         model.load(args.resume, map_location=device)
         
     model.to(device)
 
-    train_dataloader = dataloader(args.dataset, batch_size=args.batch_size, load_photo=False, augmentation=True)
+    train_dataloader = datasets.dataloader.dataloader(args.dataset, batch_size=args.batch_size, load_photo=False, augmentation=False)
     
     if args.dataset_validation:
-        validation_dataloader = dataloader(args.dataset_validation, batch_size=args.batch_size, load_photo=False)
-    
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.0002, betas=(0.5, 0.999))
-    criterion = torch.nn.MSELoss()
+        validation_dataloader = datasets.dataloader.dataloader(args.dataset_validation, batch_size=args.batch_size, load_photo=False)
+
+    optimizer = torch.optim.Adam(model.CE.parameters(), lr=0.0002, betas=(0.5, 0.999))
+    mse = losses.MSE()
         
     for epoch in range(args.epochs):
         
@@ -83,12 +83,16 @@ def main(args):
             }
             
             optimizer.zero_grad()
-            for key, CEs in model.CE.items():
-                X = CEs.crop(sketches).to(device)
-                y = CEs(X)
-                loss = criterion(y, X)
+
+            sketches = sketches.to(device)
+            patches = model.CE.crop(sketches)
+            repatches = model.CE.decode(model.CE.encode(patches))
+            
+            for key in model.components:
+                loss = mse.compute(repatches[key], patches[key])
                 loss.backward()
                 iteration_loss[f'loss_{key}_it'] += loss.item()
+            
             optimizer.step()
                 
             for key, loss in iteration_loss.items():
@@ -117,11 +121,13 @@ def main(args):
                         'val_loss_mouth_it' : 0,
                         'val_loss_background_it' : 0
                     }
-                    
-                    for key, CEs in model.CE.items():
-                        X = CEs.crop(sketches).to(device)
-                        y = CEs(X)
-                        loss = criterion(y, X)
+
+                    sketches = sketches.to(device)
+                    patches = model.CE.crop(sketches)
+                    repatches = model.CE.decode(model.CE.encode(patches))
+
+                    for key in model.components:
+                        loss = mse.compute(repatches[key], patches[key])
                         validation_iteration_loss[f'val_loss_{key}_it'] += loss.item()
                         
                     for key, loss in validation_iteration_loss.items():
@@ -144,8 +150,8 @@ def main(args):
             experiment.log_metrics(running_loss, step=epoch+1)
             if args.dataset_validation: experiment.log_metrics(validation_running_loss, step=epoch+1)
             if args.comet_log_image:
-                log_image_patches = model.CE_Decode(model.CE_Encode(log_image_sketch))
-                log_image_patches = stack_patches(log_image_patches)[0]
+                log_image_patches = model.CE(log_image_sketch)
+                log_image_patches = utils.patches2PIL(log_image_patches)[0]
                 experiment.log_image(log_image_patches, step=epoch+1)
         
         if args.output:
