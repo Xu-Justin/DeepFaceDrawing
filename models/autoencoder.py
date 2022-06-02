@@ -53,8 +53,8 @@ class Decoder(nn.Module):
         
         self.output = nn.Sequential(
             block.ResNet(self.channels[-2]),
-            self.ReflectionPad2d(self.conv_dimension, self.output_dimension*2),
-            block.Conv2D(self.channels[-2], self.channels[-1])
+            self.ReflectionPad2d(self.conv_dimension, self.output_dimension),
+            nn.Conv2d(self.channels[-2], self.channels[-1], kernel_size=4, stride=1, padding='same', padding_mode='reflect')
         )
         
     def forward(self, x):

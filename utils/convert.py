@@ -13,7 +13,7 @@ def fig2img(fig):
     return Image.open(buf)
 
 def tensor2PIL(tensor):
-    return transforms.ToPILImage()(image)
+    return transforms.ToPILImage()(tensor)
 
 def tensor2numpy(tensor):
     return tensor.detach().cpu().clone().numpy()

@@ -29,7 +29,7 @@ class dataset(Dataset):
     
     def __len__(self):
         return len(self.path_sketches)
-    
+            
     def __getitem__(self, idx):
         if self.load_photo:
             return load_one_sketch_photo(self.path_sketches[idx], self.path_photos[idx], augmentation=self.augmentation)

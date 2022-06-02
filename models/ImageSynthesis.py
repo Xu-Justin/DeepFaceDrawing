@@ -32,7 +32,7 @@ class Generator(nn.Module):
             x = self.resnet[i](x)
         for i in range(len(self.decoder)):
             x = self.decoder[i](x)
-        x = torch.tanh(x)
+        x = torch.sigmoid(x)
         return x
         
 class Discriminator(nn.Module):

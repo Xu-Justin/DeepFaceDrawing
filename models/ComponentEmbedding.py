@@ -48,6 +48,7 @@ class Base(nn.Module):
     def decode(self, x):
         assert x.shape[1:] == (self.latent_dimension,), f'[Component Embedding : decode] Expected input shape {(-1, self.latent_dimension)}, but received {x.shape}.'
         x = self.decoder(x)
+        x = torch.sigmoid(x)
         assert x.shape[1:] == (self.decoder_channels[-1], self.dimension, self.dimension), f'[Component Embedding : decode] Expected output shape {(-1, self.decoder_channels[-1], self.dimension, self.dimension)}, but yield {x.shape}.'
         return x
 
@@ -136,7 +137,7 @@ class Background(Master):
 class Module(nn.Module):
     def __init__(self, encoder=True, decoder=True):
         super().__init__()
-        self.CE = nn.ModuleDict({
+        self.components = nn.ModuleDict({
             'left_eye' : LeftEye(encoder=encoder, decoder=decoder),
             'right_eye' : RightEye(encoder=encoder, decoder=decoder),
             'nose' : Nose(encoder=encoder, decoder=decoder),
@@ -145,53 +146,42 @@ class Module(nn.Module):
         })
 
     def forward(self, x):
+        x = self.crop(x)
         x = self.encode(x)
         x = self.decode(x)
         return x
 
-    def encode(self, sketch):
-        patch_LeftEye = self.CE['left_eye'].crop(sketch)
-        latent_LeftEye = self.CE['left_eye'].encode(patch_LeftEye)
-        
-        patch_RightEye = self.CE['right_eye'].crop(sketch)
-        latent_RightEye = self.CE['right_eye'].encode(patch_RightEye)
-        
-        patch_Nose = self.CE['nose'].crop(sketch)
-        latent_Nose = self.CE['nose'].encode(patch_Nose)
-        
-        patch_Mouth = self.CE['mouth'].crop(sketch)
-        latent_Mouth = self.CE['mouth'].encode(patch_Mouth)
-        
-        patch_Background = self.CE['background'].crop(sketch)
-        latent_Background = self.CE['background'].encode(patch_Background)
-        
+    def crop(self, sketch):
         return {
-            'left_eye' : latent_LeftEye,
-            'right_eye' : latent_RightEye,
-            'nose' : latent_Nose,
-            'mouth' : latent_Mouth,
-            'background' : latent_Background
+            'left_eye' : self.components['left_eye'].crop(sketch),
+            'right_eye' : self.components['right_eye'].crop(sketch),
+            'nose' : self.components['nose'].crop(sketch),
+            'mouth' : self.components['mouth'].crop(sketch),
+            'background' : self.components['background'].crop(sketch),
         }
 
-    def decode(self, latent):
-        patch_LeftEye = self.CE['left_eye'].decode(latent['left_eye'])
-        patch_RightEye = self.CE['right_eye'].decode(latent['right_eye'])
-        patch_Nose = self.CE['nose'].decode(latent['nose'])
-        patch_Mouth = self.CE['mouth'].decode(latent['mouth'])
-        patch_Background = self.CE['background'].decode(latent['background'])
-        
+    def encode(self, patches):
         return {
-            'left_eye' : patch_LeftEye,
-            'right_eye' : patch_RightEye,
-            'nose' : patch_Nose,
-            'mouth' : patch_Mouth,
-            'background' : patch_Background
+            'left_eye' : self.components['left_eye'].encode(patches['left_eye']),
+            'right_eye' : self.components['right_eye'].encode(patches['right_eye']),
+            'nose' : self.components['nose'].encode(patches['nose']),
+            'mouth' : self.components['mouth'].encode(patches['mouth']),
+            'background' : self.components['background'].encode(patches['background']),
+        }
+
+    def decode(self, latents):
+        return {
+            'left_eye' : self.components['left_eye'].decode(latents['left_eye']),
+            'right_eye' : self.components['right_eye'].decode(latents['right_eye']),
+            'nose' : self.components['nose'].decode(latents['nose']),
+            'mouth' : self.components['mouth'].decode(latents['mouth']),
+            'background' : self.components['background'].decode(latents['background'])
         }
 
     def save(self, path):
-        for key, CEs in self.CE.items():
-            CEs.save(path)
+        for key, component in self.components.items():
+            component.save(path)
 
     def load(self, path, map_location=torch.device('cpu')):
-        for key, CEs in self.CE.items():
-            CEs.load(path, map_location=map_location)
+        for key, component in self.components.items():
+            component.load(path, map_location=map_location)

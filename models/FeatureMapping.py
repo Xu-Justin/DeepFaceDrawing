@@ -111,7 +111,7 @@ class Background(Master):
 class Module(nn.Module):
     def __init__(self, decoder=True):
         super().__init__()
-        self.FM = nn.ModuleDict({
+        self.components = nn.ModuleDict({
                 'left_eye' : LeftEye(decoder=decoder),
                 'right_eye' : RightEye(decoder=decoder),
                 'nose' : Nose(decoder=decoder),
@@ -121,26 +121,30 @@ class Module(nn.Module):
 
     def forward(self, x):
         x = self.decode(x)
+        x = self.merge(x)
         return x
     
     def decode(self, latent):
-        patch_LeftEye = self.FM['left_eye'].decode(latent['left_eye'])
-        patch_RightEye = self.FM['right_eye'].decode(latent['right_eye'])
-        patch_Nose = self.FM['nose'].decode(latent['nose'])
-        patch_Mouth = self.FM['mouth'].decode(latent['mouth'])
-        patch_Background = self.FM['background'].decode(latent['background'])
-        
-        spatial_map = patch_Background
-        spatial_map = self.FM['left_eye'].merge(spatial_map, patch_LeftEye)
-        spatial_map = self.FM['right_eye'].merge(spatial_map, patch_RightEye)
-        spatial_map = self.FM['nose'].merge(spatial_map, patch_Nose)
-        spatial_map = self.FM['mouth'].merge(spatial_map, patch_Mouth)
+        return {
+            'left_eye' : self.components['left_eye'].decode(latent['left_eye']),
+            'right_eye' : self.components['right_eye'].decode(latent['right_eye']),
+            'nose' : self.components['nose'].decode(latent['nose']),
+            'mouth' : self.components['mouth'].decode(latent['mouth']),
+            'background' : self.components['background'].decode(latent['background']),
+        }
+
+    def merge(self, patches):
+        spatial_map = patches['background']
+        spatial_map = self.components['left_eye'].merge(spatial_map, patches['left_eye'])
+        spatial_map = self.components['right_eye'].merge(spatial_map, patches['right_eye'])
+        spatial_map = self.components['nose'].merge(spatial_map, patches['nose'])
+        spatial_map = self.components['mouth'].merge(spatial_map, patches['mouth'])
         return spatial_map
 
     def save(self, path):
-        for key, FMs in self.FM.items():
-            FMs.save(path)
+        for key, component in self.components.items():
+            component.save(path)
 
     def load(self, path, map_location=torch.device('cpu')):
-        for key, FMs in self.FM.items():
-            FMs.load(path, map_location=map_location)
+        for key, component in self.components.items():
+            component.load(path, map_location=map_location)
