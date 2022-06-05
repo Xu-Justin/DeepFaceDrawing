@@ -1,7 +1,5 @@
 import torch
-from dataset import load_one_sketch, itanh
-from utils import tensor2PIL
-from model import DeepFaceDrawing
+import datasets, models, utils
 
 def get_args_parser():
     import argparse
@@ -19,7 +17,7 @@ def main(args):
     device = torch.device(args.device)
     print(f'Device : {device}')
     
-    model = DeepFaceDrawing(
+    model = models.DeepFaceDrawing(
         CE=True, CE_encoder=True, CE_decoder=False,
         FM=True, FM_decoder=True,
         IS=True, IS_generator=True, IS_discriminator=False,
@@ -29,12 +27,12 @@ def main(args):
     model.to(device)
     model.eval()
     
-    image = load_one_sketch(args.image).to(device)
+    image = datasets.dataloader.load_one_sketch(args.image, simplify=True, device=args.device).unsqueeze(0).to(device)
     print(f'Loaded image from {args.image}')
-    
+
     with torch.no_grad():
-        result = itanh(model(image))
-    result = tensor2PIL(result[0])
+        result = model(image)
+    result = utils.convert.tensor2PIL(result[0])
     result.save(args.output)
     print(f'Saved result to {args.output}')
     

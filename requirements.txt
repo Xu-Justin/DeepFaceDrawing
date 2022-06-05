@@ -1,11 +1,17 @@
 torch>=1.11.0
 torchvision>=0.12.0
 
+pandas==1.4.2
 numpy==1.21.6
 Pillow==9.1.0
 tqdm==4.63.1
 scikit-learn==1.0.2
 matplotlib==3.5.1
+seaborn==0.11.2
 
 Flask==2.0.3
 Flask-SQLAlchemy==2.5.1
+
+gdown==4.4.0
+kaggle==1.5.12
+notebook==6.4.11

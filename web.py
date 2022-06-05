@@ -3,8 +3,7 @@ from flask import Flask, render_template, request, redirect, url_for
 
 import torch
 from torchvision import transforms
-from model import DeepFaceDrawing
-from dataset import load_one_sketch, itanh
+import models, datasets, utils
 
 def get_args_parser():
     import argparse
@@ -45,7 +44,7 @@ def main(args, storage):
     device = torch.device(args.device)
     print(f'Device : {device}')
     
-    model = DeepFaceDrawing(
+    model = models.DeepFaceDrawing(
         CE=True, CE_encoder=True, CE_decoder=False,
         FM=True, FM_decoder=True,
         IS=True, IS_generator=True, IS_discriminator=False,
@@ -53,6 +52,7 @@ def main(args, storage):
     )
     model.load(args.weight, map_location=device)
     model.to(args.device)
+    model.eval()
     
     template_folder = os.path.abspath('resources/templates/')
     app = Flask(__name__, template_folder=template_folder, static_folder=storage.get_folder_path())
@@ -69,9 +69,9 @@ def main(args, storage):
     
     @app.route('/forward/<file_name>', methods=['GET'])
     def forward(file_name):
-        x = load_one_sketch(os.path.join(storage.get_folder_path(), 'sketch', file_name)).to(device)
-        x = itanh(model(x)[0]).cpu()
-        x = transforms.ToPILImage()(x)
+        x = datasets.dataloader.load_one_sketch(os.path.join(storage.get_folder_path(), 'sketch', file_name), simplify=True, device=args.device).unsqueeze(0).to(device)
+        x = model(x)
+        x = utils.convert.tensor2PIL(x[0])
         x.save(os.path.join(storage.get_folder_path(), 'photo', file_name))
         return redirect(url_for('display', file_name=file_name))
     
