@@ -27,9 +27,9 @@ def main(args):
     model.to(device)
     model.eval()
     
-    image = datasets.dataloader.load_one_sketch(args.image).unsqueeze(0).to(device)
+    image = datasets.dataloader.load_one_sketch(args.image, simplify=True, device=args.device).unsqueeze(0).to(device)
     print(f'Loaded image from {args.image}')
-    
+
     with torch.no_grad():
         result = model(image)
     result = utils.convert.tensor2PIL(result[0])
