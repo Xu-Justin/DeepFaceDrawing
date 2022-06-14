@@ -74,6 +74,7 @@ def main(args):
     
     l1 = losses.L1()
     bce = losses.BCE()
+    perceptual = losses.Perceptual(device=args.device)
 
     label_real = model.IS.label_real
     label_fake = model.IS.label_fake
@@ -97,9 +98,10 @@ def main(args):
             
             optimizer_generator.zero_grad()
             loss_G_L1 = l1.compute(fake_photos, photos)
+            loss_perceptual = perceptual.compute(fake_photos, photos)
             patches = model.IS.discriminate(spatial_map, fake_photos)
             loss_G_BCE = torch.tensor([bce.compute(patch, torch.full(patch.shape, label_real, dtype=torch.float, requires_grad=True).to(device)) for patch in patches], dtype=torch.float, requires_grad=True).sum()
-            loss_G = loss_G_L1 + loss_G_BCE
+            loss_G = loss_perceptual + 10 * loss_G_L1 + loss_G_BCE
             loss_G.backward()
             optimizer_generator.step()
             
@@ -141,9 +143,10 @@ def main(args):
                     fake_photos = model.IS.generate(spatial_map)
                     
                     loss_G_L1 = l1.compute(fake_photos, photos)
+                    loss_perceptual = perceptual.compute(fake_photos, photos)
                     patches = model.IS.discriminate(spatial_map, fake_photos)
                     loss_G_BCE = torch.tensor([bce.compute(patch, torch.full(patch.shape, label_real, dtype=torch.float).to(device)) for patch in patches], dtype=torch.float).sum()
-                    loss_G = 100 * loss_G_L1 + loss_G_BCE
+                    loss_G = loss_perceptual + 10 * loss_G_L1 + loss_G_BCE
                     
                     patches = model.IS.discriminate(spatial_map.detach(), fake_photos.detach())
                     loss_D_fake = torch.tensor([bce.compute(patch, torch.full(patch.shape, label_fake, dtype=torch.float).to(device)) for patch in patches], dtype=torch.float).sum()

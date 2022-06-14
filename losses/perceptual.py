@@ -6,7 +6,6 @@ class Perceptual:
     preprocess = transforms.Compose([
         transforms.Resize(256),
         transforms.CenterCrop(224),
-        transforms.ToTensor(),
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
     ])
 
@@ -20,12 +19,12 @@ class Perceptual:
     
     def compute(self, prediction, ground_truth):
         prediction = self.preprocess(prediction)
-        ground_truth = self.ground_truth(ground_truth)
+        ground_truth = self.preprocess(ground_truth)
         
         loss = 0
         for layer, module in self.model.features._modules.items():
             prediction = module(prediction)
             ground_truth = module(ground_truth)
-            if layer in perceptual_layer:
+            if layer in self.perceptual_layer:
                 loss += self.criterion.compute(prediction, ground_truth)
         return loss
