@@ -54,7 +54,7 @@ python3 train_stage_2.py \
     --device cuda
 ```
 
-**NOTES: This training process requires large GPU memory allocations, it is recommended to have at least 8GB of GPU memory to perform the training process. Please consider to decrease the number of batch size if your have insufficient GPU memory.**
+**NOTES: This training process requires large GPU memory allocations, it is recommended to have at least 8GB of GPU memory to perform the training process. Please consider to decrease the number of batch size if you have insufficient GPU memory.**
 
 ## Model Weight
 
