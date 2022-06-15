@@ -6,7 +6,7 @@ RUN apt-get update -qq && \
     apt-get install -y git vim libgtk2.0-dev zip unzip && \
     rm -rf /var/cache/apk/*
 
-COPY requirements.txt /workspace
-RUN pip --no-cache-dir install -r /workspace/requirements.txt
+COPY requirements.txt /
+RUN pip --no-cache-dir install -r /requirements.txt
 RUN pip --no-cache-dir install comet_ml
 RUN pip --no-cache-dir install dvc[gdrive]
