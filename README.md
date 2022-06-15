@@ -1,6 +1,6 @@
 # DeepFaceDrawing
 
-**This implementation is mostly based on [DeepFaceDrawing: Deep Generation of Face Images from Sketches](http://geometrylearning.com/paper/DeepFaceDrawing.pdf), but with several modifications, includes number of layers, losses, and datasets. Please refers to [this repository](https://github.com/IGLICT/DeepFaceDrawing-Jittor) for the original implementation.**
+**This implementation is mostly based on [DeepFaceDrawing: Deep Generation of Face Images from Sketches](http://geometrylearning.com/paper/DeepFaceDrawing.pdf), but with several modifications, includes layers, losses, and datasets. Please refers to [IGLICT/DeepFaceDrawing-Jittor](https://github.com/IGLICT/DeepFaceDrawing-Jittor) for the original implementation.**
 
 A generative model that could generate photo-realistic face images from hand-sketch face images.
 
@@ -86,6 +86,20 @@ python3 inference.py \
     --device cuda
 ```
 
+**Docker Container**
+
+It is recommended to do the inference inside a docker container to prevent version conflicts. The container for this project is available on [Docker Hub](https://hub.docker.com/layers/234798591/jstnxu/deep-face-drawing/env/images/sha256-7522d3bc7c326ea1b1de9299dce7344b30065d12e9effbacef6cb19fbae971ed?context=repo) and can be pulled using the following commands.
+
+```
+docker pull jstnxu/deep-face-drawing:env
+```
+
+The following commands will create a docker container with essentials package.
+
+```
+docker run -it --rm --gpus all -v $(pwd):/workspace jstnxu/deep-face-drawing:env /bin/bash
+```
+
 **NOTES: The inference process will perform [sketch simplification](https://esslab.jp/~ess/publications/SimoSerraSIGGRAPH2016.pdf) and dimension resize to `512 x 512` pixels. The sketch simplification model requires [`model_gan.pth`](https://drive.google.com/file/d/1-16NelGGRQBOBa42OFpgu3QX4y4rSs0q/view?usp=sharing).**
 
 ## Web Application
@@ -94,15 +108,24 @@ The following commands will host the model as web-version application at `localh
 
 ```
 python3 web.py \
-  --weight weight/weight/DeepFaceDrawing/ \
-  --device cuda \
-  --host 0.0.0.0 \
-  --port 8000
+    --weight weight/weight/DeepFaceDrawing/ \
+    --device cuda \
+    --host 0.0.0.0 \
+    --port 8000
 ```
 
 **Docker Version Web Application**
+
+Docker version web application is available on [Docker Hub](https://hub.docker.com/layers/234795812/jstnxu/deep-face-drawing/web/images/sha256-c71ea3388e2a25f9f240f330349322ac8dd9bb431de85cc73d5064b0b58e0db8?context=repo) and can be pulled using the following commands.
+
 ```
-COMING SOON.
+docker pull jstnxu/deep-face-drawing:web
+```
+
+The following commands will host docker version web application at `localhost:8000`.
+
+```
+docker run --rm --gpus all -p 8000:8000 jstnxu/deep-face-drawing:web --device cuda
 ```
 
 **NOTES: The inference process will perform [sketch simplification](https://esslab.jp/~ess/publications/SimoSerraSIGGRAPH2016.pdf) and dimension resize to `512 x 512` pixels. The sketch simplification model requires [`model_gan.pth`](https://drive.google.com/file/d/1-16NelGGRQBOBa42OFpgu3QX4y4rSs0q/view?usp=sharing).**
