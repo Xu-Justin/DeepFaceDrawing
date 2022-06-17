@@ -1,3 +1,5 @@
+[![Repo](https://badgen.net/badge/icon/GitHub?icon=github&label)](https://github.com/Xu-Justin/DeepFaceDrawing) [![Docker](https://badgen.net/badge/icon/Docker%20Hub?icon=docker&label)](https://hub.docker.com/repository/docker/jstnxu/deep-face-drawing/tags)
+
 # DeepFaceDrawing
 
 **This implementation is mostly based on [DeepFaceDrawing: Deep Generation of Face Images from Sketches](http://geometrylearning.com/paper/DeepFaceDrawing.pdf), but with several modifications, includes layers, losses, and datasets. Please refers to [IGLICT/DeepFaceDrawing-Jittor](https://github.com/IGLICT/DeepFaceDrawing-Jittor) for the original implementation.**
@@ -88,7 +90,7 @@ python3 inference.py \
 
 **Docker Container**
 
-It is recommended to do the inference inside a docker container to prevent version conflicts. The container for this project is available on [Docker Hub](https://hub.docker.com/layers/234798591/jstnxu/deep-face-drawing/env/images/sha256-7522d3bc7c326ea1b1de9299dce7344b30065d12e9effbacef6cb19fbae971ed?context=repo) and can be pulled using the following commands.
+It is recommended to do the inference inside a docker container to prevent version conflicts. The container image for this project is available on [Docker Hub](https://hub.docker.com/layers/234798591/jstnxu/deep-face-drawing/env/images/sha256-7522d3bc7c326ea1b1de9299dce7344b30065d12e9effbacef6cb19fbae971ed?context=repo) and can be pulled using the following commands.
 
 ```
 docker pull jstnxu/deep-face-drawing:env
@@ -116,7 +118,7 @@ python3 web.py \
 
 **Docker Version Web Application**
 
-Docker version web application is available on [Docker Hub](https://hub.docker.com/layers/234795812/jstnxu/deep-face-drawing/web/images/sha256-c71ea3388e2a25f9f240f330349322ac8dd9bb431de85cc73d5064b0b58e0db8?context=repo) and can be pulled using the following commands.
+Docker version web application image is available on [Docker Hub](https://hub.docker.com/layers/234795812/jstnxu/deep-face-drawing/web/images/sha256-c71ea3388e2a25f9f240f330349322ac8dd9bb431de85cc73d5064b0b58e0db8?context=repo) and can be pulled using the following commands.
 
 ```
 docker pull jstnxu/deep-face-drawing:web
